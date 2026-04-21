@@ -9,6 +9,8 @@ node_modules
 /build
 /dist
 
+firebase-debug.log
+
 # OS
 .DS_Store
 Thumbs.db
