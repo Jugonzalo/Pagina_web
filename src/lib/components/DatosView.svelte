@@ -1,4 +1,7 @@
 <script>
+  import { onMount } from 'svelte';
+  import * as echarts from 'echarts';
+
   /** @type {string} */
   export let ROBOT_ID;
   /** @type {any} */
@@ -7,6 +10,107 @@
   export let speedHistory;
   /** @type {number[]} */
   export let accelHistory;
+
+  let chartContainerL;
+  let chartContainerR;
+  let chartL;
+  let chartR;
+
+  function getGaugeOption(value) {
+    return {
+      series: [
+        {
+          type: 'gauge',
+          min: -100,
+          max: 100,
+          axisLine: {
+            lineStyle: {
+              width: 10,
+              color: [
+                [0.3, '#67e0e3'],
+                [0.7, '#37a2da'],
+                [1, '#fd666d']
+              ]
+            }
+          },
+          pointer: {
+            itemStyle: {
+              color: 'auto'
+            }
+          },
+          axisTick: {
+            distance: -10,
+            length: 4,
+            lineStyle: {
+              color: '#fff',
+              width: 1
+            }
+          },
+          splitLine: {
+            distance: -10,
+            length: 10,
+            lineStyle: {
+              color: '#fff',
+              width: 2
+            }
+          },
+          axisLabel: {
+            color: 'inherit',
+            distance: 15,
+            fontSize: 10
+          },
+          detail: {
+            valueAnimation: true,
+            formatter: '{value}',
+            color: 'inherit',
+            fontSize: 18,
+            offsetCenter: [0, '60%']
+          },
+          data: [
+            {
+              value: value
+            }
+          ]
+        }
+      ]
+    };
+  }
+
+  onMount(() => {
+    chartL = echarts.init(chartContainerL);
+    chartR = echarts.init(chartContainerR);
+
+    chartL.setOption(getGaugeOption(telemetry.motorL));
+    chartR.setOption(getGaugeOption(telemetry.motorR));
+
+    const handleResize = () => {
+      chartL?.resize();
+      chartR?.resize();
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      chartL?.dispose();
+      chartR?.dispose();
+    };
+  });
+
+  $: if (chartL && telemetry) {
+    chartL.setOption({
+      series: [{
+        data: [{ value: telemetry.motorL.toFixed(2) }]
+      }]
+    });
+  }
+
+  $: if (chartR && telemetry) {
+    chartR.setOption({
+      series: [{
+        data: [{ value: telemetry.motorR.toFixed(2) }]
+      }]
+    });
+  }
 
   /**
    * @param {number[]} data
@@ -36,24 +140,16 @@
 
   <!-- Fila de métricas principales -->
   <div class="metrics-grid">
-    <!-- Velocidad Motor Izquierdo -->
-    <div class="metric-card">
-      <div class="metric-label">VELOCIDAD MOTOR L</div>
-      <div class="metric-value primary">{telemetry.motorL.toFixed(2)}</div>
-      <div class="metric-unit">V_R1 · RPM</div>
-      <div class="metric-bar">
-        <div class="metric-bar-fill" style="width: {Math.min(100, telemetry.motorL / 10 * 100)}%"></div>
-      </div>
+    <!-- Velocidad Motor Izquierdo (ECharts Gauge) -->
+    <div class="metric-card gauge-card">
+      <div class="metric-label">VELOCIDAD MOTOR L (RPM)</div>
+      <div bind:this={chartContainerL} class="gauge-container"></div>
     </div>
 
-    <!-- Velocidad Motor Derecho -->
-    <div class="metric-card">
-      <div class="metric-label">VELOCIDAD MOTOR R</div>
-      <div class="metric-value primary">{telemetry.motorR.toFixed(2)}</div>
-      <div class="metric-unit">V_R2 · RPM</div>
-      <div class="metric-bar">
-        <div class="metric-bar-fill" style="width: {Math.min(100, telemetry.motorR / 10 * 100)}%"></div>
-      </div>
+    <!-- Velocidad Motor Derecho (ECharts Gauge) -->
+    <div class="metric-card gauge-card">
+      <div class="metric-label">VELOCIDAD MOTOR R (RPM)</div>
+      <div bind:this={chartContainerR} class="gauge-container"></div>
     </div>
 
     <!-- Velocidad Angular -->
@@ -184,6 +280,14 @@
   }
   .metric-card:hover { background: var(--surface-high); }
   .metric-card--wide { grid-column: span 2; }
+  
+  .gauge-card {
+    padding-bottom: 0.5rem;
+  }
+  .gauge-container {
+    width: 100%;
+    height: 180px; /* Altura fija para que ECharts pueda renderizarse correctamente */
+  }
 
   .metric-label {
     font-size: 0.6rem;
@@ -275,3 +379,4 @@
     50%       { opacity: 0.3; }
   }
 </style>
+

@@ -133,7 +133,21 @@
     sendControl();
   }
 
-  // enviar datos cada 0.3 segundos
+  // leer datos cada 0.3 segundos
+  // mientras no tenga lectura de sensores pondre esto.
+  
+  setInterval(function(){
+    get(ref(db, '/Escritura/Angulo')).then((snapshot) => {
+      telemetry.yaw = snapshot.val();
+    });
+    get(ref(db, '/Escritura/Potencia_derecha')).then((snapshot) => {
+      telemetry.motorR = snapshot.val() / 2.55;
+    });
+    get(ref(db, '/Escritura/Potencia_izquierda')).then((snapshot) => {
+      telemetry.motorL = snapshot.val() / 2.55;
+    });
+    
+  }, 300);
 
   
 
