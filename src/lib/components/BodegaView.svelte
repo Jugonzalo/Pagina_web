@@ -1,82 +1,53 @@
-<!-- ============================================================
-     VISTA: Estado de Bodega
-     ============================================================
-     Muestra la información del almacén y las misiones:
-       - Mapa esquemático de la bodega (cuadrícula 6×4)
-       - Tarjeta de misión actual con barra de progreso
-       - Registro de actividad (log cronológico)
-       - Formulario para asignar nueva misión
-     ============================================================ -->
 <script>
-  import { currentMission, activityLog, robotMapPos } from '$lib/stores/robot';
-  import { assignMission } from '$lib/api/control';
-
-  /** Destino de la nueva misión ingresado en el formulario */
-  let newMissionTarget = '';
-
-  /** Prioridad de la nueva misión seleccionada en el select */
-  let newMissionPriority = 'MEDIA'; // 'BAJA' | 'MEDIA' | 'ALTA'
-
-  /**
-   * Se ejecuta al presionar "Asignar misión".
-   * Llama a assignMission() y limpia el formulario si fue exitoso.
-   */
-  function handleAssignMission() {
-    if (!newMissionTarget.trim()) return;
-
-    assignMission(newMissionTarget, newMissionPriority, {
-      currentMission,
-      activityLog
-    });
-
-    // Limpiar el campo de destino después de asignar
-    newMissionTarget = '';
-  }
+  /** @type {any} */
+  export let currentMission;
+  /** @type {any} */
+  export let robotMapPos;
+  /** @type {any[]} */
+  export let activityLog;
+  /** @type {string} */
+  export let newMissionTarget;
+  /** @type {string} */
+  export let newMissionPriority;
+  /** @type {() => void} */
+  export let assignMission;
 </script>
 
 <section class="view" id="view-bodega">
 
-  <!-- Encabezado -->
   <header class="view-header">
     <h1 class="view-title">ESTADO DE BODEGA</h1>
-    <div class="mission-id-badge">MISIÓN: {$currentMission.id}</div>
+    <div class="mission-id-badge">MISIÓN: {currentMission.id}</div>
   </header>
 
-  <!-- ── GRILLA DE COLUMNAS ─────────────────────────────────── -->
   <div class="bodega-grid">
 
-    <!-- ── COLUMNA IZQUIERDA: Mapa + Misión actual ───────── -->
+    <!-- Columna izquierda: Mapa + Misión actual -->
     <div class="bodega-col">
 
       <!-- Mapa esquemático de la bodega -->
-      <!--
-        Cuadrícula de 6 columnas × 4 filas.
-        Las columnas 1 y 4 son estantes (fondo más oscuro).
-        La celda del robot se marca con el ícono ◈.
-      -->
       <div class="map-card">
         <div class="card-title">MAPA ESQUEMÁTICO</div>
         <div class="warehouse-map">
+          <!-- Cuadrícula de celdas (6 columnas × 4 filas) -->
           {#each Array(4) as _, row}
             {#each Array(6) as _, col}
               <div
                 class="map-cell
-                  {$robotMapPos.col === col && $robotMapPos.row === row ? 'map-cell--robot' : ''}
+                  {robotMapPos.col === col && robotMapPos.row === row ? 'map-cell--robot' : ''}
                   {(col === 1 || col === 4) ? 'map-cell--shelf' : ''}
                 "
               >
-                {#if $robotMapPos.col === col && $robotMapPos.row === row}
-                  <!-- Posición actual del robot -->
+                {#if robotMapPos.col === col && robotMapPos.row === row}
+                  <!-- Icono del robot en el mapa -->
                   <span class="robot-marker">◈</span>
                 {:else if (col === 1 || col === 4)}
-                  <!-- Estante de almacenamiento -->
                   <span class="shelf-marker">▪</span>
                 {/if}
               </div>
             {/each}
           {/each}
         </div>
-
         <!-- Leyenda del mapa -->
         <div class="map-legend">
           <span class="legend-item"><span class="robot-marker-sm">◈</span> Robot</span>
@@ -87,36 +58,27 @@
       <!-- Misión actual -->
       <div class="mission-card">
         <div class="card-title">MISIÓN ACTUAL</div>
-
-        <!-- Badge de estado con color según el estado -->
-        <div class="mission-status-badge {$currentMission.status === 'EN PROGRESO' ? 'secondary' : $currentMission.status === 'COMPLETADA' ? 'success' : ''}">
-          {$currentMission.status}
+        <div class="mission-status-badge {currentMission.status === 'EN PROGRESO' ? 'secondary' : currentMission.status === 'COMPLETADA' ? 'success' : ''}">
+          {currentMission.status}
         </div>
-
-        <p class="mission-description">{$currentMission.description}</p>
-
+        <p class="mission-description">{currentMission.description}</p>
         <!-- Barra de progreso de la misión -->
         <div class="mission-progress-track">
-          <div class="mission-progress-fill" style="width: {$currentMission.progress}%"></div>
+          <div class="mission-progress-fill" style="width: {currentMission.progress}%"></div>
         </div>
-        <div class="mission-progress-label">{$currentMission.progress}% completado</div>
+        <div class="mission-progress-label">{currentMission.progress}% completado</div>
       </div>
 
     </div><!-- /bodega-col left -->
 
-    <!-- ── COLUMNA DERECHA: Log + Nueva misión ──── -->
+    <!-- Columna derecha: Log + Nueva misión -->
     <div class="bodega-col">
 
       <!-- Registro de actividad -->
-      <!--
-        Lista de eventos cronológicos del robot y la bodega.
-        Se actualiza cada vez que ocurre algo relevante
-        (misión asignada, parada de emergencia, etc.)
-      -->
       <div class="log-card">
         <div class="card-title">REGISTRO DE ACTIVIDAD</div>
         <ul class="activity-log">
-          {#each $activityLog as entry}
+          {#each activityLog as entry}
             <li class="log-entry">
               <span class="log-time">{entry.time}</span>
               <span class="log-msg">{entry.msg}</span>
@@ -149,11 +111,10 @@
           </select>
         </div>
 
-        <!-- Botón deshabilitado si no hay destino ingresado -->
         <button
           id="btn-assign-mission"
           class="btn-primary btn-full"
-          on:click={handleAssignMission}
+          on:click={assignMission}
           disabled={!newMissionTarget.trim()}
         >
           ASIGNAR MISIÓN
@@ -167,23 +128,6 @@
 </section>
 
 <style>
-  .view { padding: 2rem 2.5rem; }
-
-  /* ── ENCABEZADO ──────────────────────────────────────────── */
-  .view-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin-bottom: 2rem;
-    border-bottom: 1px solid rgba(66, 70, 85, 0.3);
-    padding-bottom: 1rem;
-  }
-  .view-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--on-surface);
-    letter-spacing: 0.03em;
-  }
   .mission-id-badge {
     font-size: 0.65rem;
     font-weight: 700;
@@ -194,7 +138,7 @@
     padding: 0.2rem 0.6rem;
   }
 
-  /* ── LAYOUT DE BODEGA ────────────────────────────────────── */
+  /* ── VISTA BODEGA ───────────────────────────────────────── */
   .bodega-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -202,7 +146,7 @@
   }
   .bodega-col { display: flex; flex-direction: column; gap: 1rem; }
 
-  /* ── TARJETAS GENÉRICAS ──────────────────────────────────── */
+  /* Tarjeta genérica de sección */
   .map-card, .mission-card, .log-card, .new-mission-card {
     background: var(--surface-mid);
     border-radius: var(--radius-md);
@@ -217,7 +161,7 @@
     margin-bottom: 1rem;
   }
 
-  /* ── MAPA DE BODEGA ──────────────────────────────────────── */
+  /* Mapa de bodega */
   .warehouse-map {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
@@ -238,8 +182,8 @@
   }
   .map-cell--robot { background: rgba(176, 198, 255, 0.15); }
   .map-cell--shelf { background: var(--surface-bright); }
-  .robot-marker    { color: var(--primary); font-size: 1rem; }
-  .shelf-marker    { color: var(--on-surface-variant); font-size: 0.5rem; }
+  .robot-marker { color: var(--primary); font-size: 1rem; }
+  .shelf-marker  { color: var(--on-surface-variant); font-size: 0.5rem; }
 
   .map-legend {
     display: flex;
@@ -253,7 +197,7 @@
   .robot-marker-sm { color: var(--primary); }
   .shelf-marker-sm  { color: var(--on-surface-variant); }
 
-  /* ── MISIÓN ACTUAL ───────────────────────────────────────── */
+  /* Tarjeta de misión */
   .mission-status-badge {
     display: inline-block;
     font-size: 0.6rem;
@@ -292,7 +236,7 @@
     letter-spacing: 0.04em;
   }
 
-  /* ── LOG DE ACTIVIDAD ────────────────────────────────────── */
+  /* Log de actividad */
   .activity-log {
     list-style: none;
     display: flex;
@@ -320,7 +264,7 @@
   }
   .log-msg { color: var(--on-surface-variant); }
 
-  /* ── FORMULARIO ──────────────────────────────────────────── */
+  /* Formulario nueva misión */
   .form-group { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.9rem; }
   .form-label {
     font-size: 0.6rem;
@@ -346,7 +290,6 @@
   }
   .form-input option { background: var(--surface-high); }
 
-  /* ── BOTÓN ───────────────────────────────────────────────── */
   .btn-primary {
     padding: 0.7rem 1.5rem;
     background: var(--primary-container);

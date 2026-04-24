@@ -1,103 +1,99 @@
-<!-- ============================================================
-     COMPONENTE: Sidebar
-     ============================================================
-     Barra lateral fija de la izquierda.
-     Contiene:
-       1. Logo de la aplicación
-       2. Identificador del robot activo
-       3. Navegación principal (Datos / Controles / Bodega)
-       4. Selector de modo de conexión (Offline / Auto / Online)
-       5. Indicador de estado del robot en el footer
-     ============================================================ -->
 <script>
-  import { ROBOT_ID, ACTIVE_PROTOCOL } from '$lib/config/constants';
-  import { activeView, connectionMode, connectivityStatus, telemetry } from '$lib/stores/robot';
-  import { setConnectionMode } from '$lib/api/telemetry';
-  import { statusClass } from '$lib/utils/format';
+  /** @type {string} */
+  export let activeView;
+  /** @type {string} */
+  export let connectionMode;
+  /** @type {string} */
+  export let connectivityStatus;
+  /** @type {string} */
+  export let telemetryStatus;
+  /** @type {string} */
+  export let ROBOT_ID;
+  /** @type {string} */
+  export let ACTIVE_PROTOCOL;
+  /** @type {(mode: string) => void} */
+  export let setConnectionMode;
+
+  /** @param {string} status */
+  function statusClass(status) {
+    /** @type {Record<string, string>} */
+    const map = {
+      'LISTO':         'status-ready',
+      'EN MOVIMIENTO': 'status-active',
+      'DETENIDO':      'status-warning',
+      'ERROR':         'status-error'
+    };
+    return map[status] ?? 'status-ready';
+  }
 </script>
 
 <aside class="sidebar">
 
-  <!-- ── 1. LOGO ──────────────────────────────────────────── -->
+  <!-- Logo / identidad -->
   <div class="sidebar-logo">
     <span class="logo-icon">⬡</span>
     <span class="logo-text">KINETIC<br>LABS</span>
   </div>
 
-  <!-- ── 2. IDENTIFICADOR DEL ROBOT ───────────────────────── -->
+  <!-- Identificador del robot -->
   <div class="robot-id">
     <div class="robot-id-label">UNIDAD ACTIVA</div>
     <div class="robot-id-value">{ROBOT_ID}</div>
     <div class="robot-id-protocol">{ACTIVE_PROTOCOL}</div>
   </div>
 
-  <!-- ── 3. NAVEGACIÓN PRINCIPAL ──────────────────────────── -->
-  <!--
-    Cada botón cambia el store activeView, lo que hace que
-    +page.svelte muestre la vista correspondiente.
-  -->
+  <!-- Navegación principal -->
   <nav class="sidebar-nav">
     <button
       id="btn-nav-datos"
-      class="nav-item {$activeView === 'datos' ? 'nav-item--active' : ''}"
-      on:click={() => activeView.set('datos')}
+      class="nav-item {activeView === 'datos' ? 'nav-item--active' : ''}"
+      on:click={() => activeView = 'datos'}
     >
       <span class="nav-icon">⬡</span>
       <span class="nav-label">DATOS</span>
     </button>
-
     <button
       id="btn-nav-controles"
-      class="nav-item {$activeView === 'controles' ? 'nav-item--active' : ''}"
-      on:click={() => activeView.set('controles')}
+      class="nav-item {activeView === 'controles' ? 'nav-item--active' : ''}"
+      on:click={() => activeView = 'controles'}
     >
       <span class="nav-icon">⚙</span>
       <span class="nav-label">CONTROLES</span>
     </button>
-
     <button
       id="btn-nav-bodega"
-      class="nav-item {$activeView === 'bodega' ? 'nav-item--active' : ''}"
-      on:click={() => activeView.set('bodega')}
+      class="nav-item {activeView === 'bodega' ? 'nav-item--active' : ''}"
+      on:click={() => activeView = 'bodega'}
     >
       <span class="nav-icon">▦</span>
       <span class="nav-label">BODEGA</span>
     </button>
   </nav>
 
-  <!-- ── 4. SELECTOR DE MODO DE CONEXIÓN ──────────────────── -->
-  <!--
-    Permite elegir entre:
-      offline → siempre simulación local
-      auto    → intenta API, fallback a simulación
-      online  → siempre API real
-  -->
+  <!-- Selector de modo de conexión -->
   <div class="conn-mode-section">
     <div class="conn-mode-label">FUENTE DE DATOS</div>
 
-    <!-- Tres botones: uno por modo -->
     <div class="conn-mode-buttons">
       <button
         id="btn-mode-offline"
-        class="conn-btn {$connectionMode === 'offline' ? 'conn-btn--active offline' : ''}"
+        class="conn-btn {connectionMode === 'offline' ? 'conn-btn--active offline' : ''}"
         title="Sin API. Usa simulación local siempre."
         on:click={() => setConnectionMode('offline')}
       >
         OFFLINE
       </button>
-
       <button
         id="btn-mode-auto"
-        class="conn-btn {$connectionMode === 'auto' ? 'conn-btn--active auto' : ''}"
+        class="conn-btn {connectionMode === 'auto' ? 'conn-btn--active auto' : ''}"
         title="Intenta la API; si falla usa simulación."
         on:click={() => setConnectionMode('auto')}
       >
         AUTO
       </button>
-
       <button
         id="btn-mode-online"
-        class="conn-btn {$connectionMode === 'online' ? 'conn-btn--active online' : ''}"
+        class="conn-btn {connectionMode === 'online' ? 'conn-btn--active online' : ''}"
         title="Siempre usa la API real."
         on:click={() => setConnectionMode('online')}
       >
@@ -105,43 +101,34 @@
       </button>
     </div>
 
-    <!-- Indicador de estado de conectividad real -->
     <div class="conn-status-row">
-      {#if $connectionMode === 'offline'}
-        <!-- Modo offline intencional: indicador gris -->
+      {#if connectionMode === 'offline'}
         <span class="conn-dot conn-dot--offline"></span>
         <span class="conn-status-text">SIMULACIÓN LOCAL</span>
-
-      {:else if $connectivityStatus === 'verificando'}
-        <!-- Comprobando la API por primera vez -->
+      {:else if connectivityStatus === 'verificando'}
         <span class="conn-dot conn-dot--checking"></span>
         <span class="conn-status-text">VERIFICANDO...</span>
-
-      {:else if $connectivityStatus === 'conectado'}
-        <!-- API disponible y respondiendo -->
+      {:else if connectivityStatus === 'conectado'}
         <span class="conn-dot conn-dot--online"></span>
         <span class="conn-status-text">API CONECTADA</span>
-
       {:else}
-        <!-- API no disponible: en AUTO cae a simulación -->
         <span class="conn-dot conn-dot--offline"></span>
         <span class="conn-status-text">
-          {$connectionMode === 'auto' ? 'SIM. (sin API)' : 'SIN CONEXIÓN'}
+          {connectionMode === 'auto' ? 'SIM. (sin API)' : 'SIN CONEXIÓN'}
         </span>
       {/if}
     </div>
   </div>
 
-  <!-- ── 5. FOOTER: ESTADO GLOBAL DEL ROBOT ───────────────── -->
+  <!-- Indicador de estado global del robot en el footer del sidebar -->
   <div class="sidebar-footer">
-    <span class="status-dot {statusClass($telemetry.status)}"></span>
-    <span class="status-text">{$telemetry.status}</span>
+    <span class="status-dot {statusClass(telemetryStatus)}"></span>
+    <span class="status-text">{telemetryStatus}</span>
   </div>
 
 </aside>
 
 <style>
-  /* ── SIDEBAR ─────────────────────────────────────────────── */
   .sidebar {
     width: 200px;
     min-width: 200px;
@@ -153,7 +140,7 @@
     gap: 2rem;
   }
 
-  /* ── LOGO ────────────────────────────────────────────────── */
+  /* Logo */
   .sidebar-logo {
     display: flex;
     align-items: center;
@@ -169,7 +156,7 @@
     line-height: 1.3;
   }
 
-  /* ── ID DEL ROBOT ────────────────────────────────────────── */
+  /* Identificador del robot */
   .robot-id {
     padding: 0.75rem 1.25rem;
     border-left: 2px solid var(--secondary);
@@ -194,13 +181,13 @@
     margin-top: 0.25rem;
   }
 
-  /* ── NAVEGACIÓN ──────────────────────────────────────────── */
+  /* Navegación */
   .sidebar-nav {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
     padding: 0 0.75rem;
-    flex: 1; /* Ocupa el espacio sobrante y empuja el footer hacia abajo */
+    flex: 1;
   }
   .nav-item {
     display: flex;
@@ -226,7 +213,7 @@
   }
   .nav-icon { font-size: 1rem; }
 
-  /* ── SELECTOR DE MODO DE CONEXIÓN ────────────────────────── */
+  /* Selector de conexión */
   .conn-mode-section {
     padding: 0.75rem 1rem;
     border-top: 1px solid rgba(66, 70, 85, 0.3);
@@ -262,8 +249,6 @@
     text-align: center;
   }
   .conn-btn:hover { border-color: var(--on-surface-variant); color: var(--on-surface); }
-
-  /* Estado activo por modo (colores diferentes para cada uno) */
   .conn-btn--active.offline {
     background: var(--surface-highest);
     border-color: var(--on-surface-variant);
@@ -280,7 +265,6 @@
     color: var(--secondary);
   }
 
-  /* Fila del indicador de estado */
   .conn-status-row {
     display: flex;
     align-items: center;
@@ -303,7 +287,7 @@
     font-weight: 600;
   }
 
-  /* ── FOOTER ──────────────────────────────────────────────── */
+  /* Footer del sidebar */
   .sidebar-footer {
     padding: 0.75rem 1.25rem;
     display: flex;
@@ -311,16 +295,14 @@
     gap: 0.5rem;
   }
   .status-dot {
-    width: 8px;
-    height: 8px;
+    width: 8px; height: 8px;
     border-radius: 50%;
     flex-shrink: 0;
   }
-  /* Las clases de color de status son globales (definidas en +page.svelte) */
-  :global(.status-dot.status-ready)   { background: var(--secondary); }
-  :global(.status-dot.status-active)  { background: var(--primary); animation: pulse 1.2s infinite; }
-  :global(.status-dot.status-warning) { background: var(--tertiary); }
-  :global(.status-dot.status-error)   { background: var(--error); }
+  .status-dot.status-ready    { background: var(--secondary); }
+  .status-dot.status-active   { background: var(--primary); animation: pulse 1.2s infinite; }
+  .status-dot.status-warning  { background: var(--tertiary); }
+  .status-dot.status-error    { background: var(--error); }
   .status-text {
     font-size: 0.6rem;
     font-weight: 600;

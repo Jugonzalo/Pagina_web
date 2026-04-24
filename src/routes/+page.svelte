@@ -1,97 +1,163 @@
 <script>
+  import Sidebar from '$lib/components/Sidebar.svelte';
+  import DatosView from '$lib/components/DatosView.svelte';
+  import ControlesView from '$lib/components/ControlesView.svelte';
+  import BodegaView from '$lib/components/BodegaView.svelte';
+
   // ============================================================
-  // PÁGINA PRINCIPAL — Kinetic Labs Robot Dashboard
+  // CONSTANTES DE TEXTO
   // ============================================================
-  // Este archivo es el punto de entrada de la aplicación.
-  // Su única responsabilidad es:
-  //   1. Importar los sub-componentes y módulos
-  //   2. Iniciar y detener el loop de telemetría
-  //   3. Montar el layout (Sidebar + vistas intercambiables)
-  //
-  // La lógica de negocio, el estado reactivo y los estilos
-  // de cada sección viven en sus propios archivos en src/lib/.
+
+  const ROBOT_ID       = 'Yalent';
+  const ACTIVE_PROTOCOL = 'PROTOCOLO EMERGENTE';
+
   // ============================================================
-  import { onMount, onDestroy } from 'svelte';
+  // ESTADO DE NAVEGACIÓN
+  // ============================================================
 
-  // ── Constantes de configuración ──────────────────────────────
-  import { TELEMETRY_INTERVAL_MS } from '$lib/config/constants';
+  /** Vista activa: 'datos' | 'controles' | 'bodega' */
+  let activeView = 'datos';
 
-  // ── Store de navegación (para saber qué vista mostrar) ───────
-  import { activeView } from '$lib/stores/robot';
+  // ============================================================
+  // DATOS DE TELEMETRÍA (valores iniciales — actualizar desde backend)
+  // ============================================================
 
-  // ── Loop de telemetría ────────────────────────────────────────
-  import { updateTelemetry } from '$lib/api/telemetry';
+  let telemetry = {       // estps datpos se deben actualizar desde el firebase
+    motorL:      0.00,
+    motorR:      0.00,
+    angularVel:  0.000,
+    yaw:         0.0,
+    posX:        0.00,
+    posY:        0.00,
+    status:      'LISTO'
+  };
 
-  // ── Componentes ───────────────────────────────────────────────
-  import Sidebar       from '$lib/components/Sidebar.svelte';
-  import ViewDatos     from '$lib/components/views/ViewDatos.svelte';
-  import ViewControles from '$lib/components/views/ViewControles.svelte';
-  import ViewBodega    from '$lib/components/views/ViewBodega.svelte';
+  /** @type {number[]} */
+  let speedHistory = [];
+  /** @type {number[]} */
+  let accelHistory = [];
 
-  // ── Ciclo de vida ─────────────────────────────────────────────
-  let telemetryTimer;
+  // ============================================================
+  // ESTADO DE BODEGA
+  // ============================================================
 
-  onMount(() => {
-    // Iniciar el loop: se actualiza cada TELEMETRY_INTERVAL_MS ms
-    telemetryTimer = setInterval(updateTelemetry, TELEMETRY_INTERVAL_MS);
-    // Primera actualización inmediata (no esperar el primer tick)
-    updateTelemetry();
-  });
+  let robotMapPos = { col: 3, row: 2 };
 
-  onDestroy(() => {
-    // Limpiar el intervalo para evitar memory leaks al salir
-    clearInterval(telemetryTimer);
-  });
+  let currentMission = {
+    id:          'MSN-2041',
+    description: 'Reabastecimiento — Estante C-12',
+    status:      'EN PROGRESO',
+    progress:    62
+  };
+
+  let activityLog = [
+    { time: '21:14:03', msg: 'Misión MSN-2041 iniciada'         },
+    { time: '21:13:51', msg: 'Robot en zona de carga C'         },
+    { time: '21:13:30', msg: 'Trayectoria recalculada'          },
+    { time: '21:12:08', msg: 'Batería al 87%'                   },
+    { time: '21:11:45', msg: 'Evitación de obstáculo detectada' }
+  ];
+
+  let newMissionTarget   = '';
+  let newMissionPriority = 'MEDIA';
+
+  // ============================================================
+  // ESTADO DE CONTROLES MANUALES
+  // ============================================================
+
+  let thrustL     = 0;  // control velocidad izquierda    
+  let thrustR     = 0;  // control velocidad derecha
+  let heading     = 0;  // angulo 
+  let thrust      = 0;  // velocidad lineal
+  let controlMode = 'traccion';    // forma del control
+
+  // ============================================================
+  // ESTADO DE CONEXIÓN (solo visual — lógica en el backend)
+  // ============================================================
+
+  let connectionMode     = 'auto';
+  let connectivityStatus = 'desconectado';
+
+  // ============================================================
+  // HANDLERS — conectar al backend según el proyecto
+  // ============================================================
+
+  /** @param {string} mode */
+  function setConnectionMode(mode) {   // seleccionador de modo de coneccion
+    connectionMode     = mode;
+    connectivityStatus = mode === 'offline' ? 'desconectado' : 'verificando';
+  }
+
+  function sendControl() {    // boton de enviar comando
+    // TODO: enviar payload al backend
+    // o sea actualizar los datos que se muestran en la interfaz y cargarlo al firebase
+  }
+
+  function assignMission() {   // boton de asignar mision
+    if (!newMissionTarget.trim()) return;
+    newMissionTarget = '';
+  }
+
+  function emergencyStop() {   // boton de parada de emergencia
+    thrustL = 0;
+    thrustR = 0;
+    thrust  = 0;
+    telemetry.status = 'DETENIDO';
+  }
 </script>
 
-<!-- ============================================================
-     LAYOUT PRINCIPAL
-     Estructura: Sidebar fijo a la izquierda + Panel de vistas
-     ============================================================ -->
 <div class="app">
 
-  <!-- Barra lateral: logo, navegación, modo de conexión, status -->
-  <Sidebar />
+  <!-- ── BARRA LATERAL ─────────────────────────────────────── -->
+  <Sidebar
+    bind:activeView
+    bind:connectionMode
+    {connectivityStatus}
+    telemetryStatus={telemetry.status}
+    {ROBOT_ID}
+    {ACTIVE_PROTOCOL}
+    {setConnectionMode}
+  />
 
-  <!-- Panel principal: muestra solo la vista activa -->
+  <!-- ── PANEL PRINCIPAL ───────────────────────────────────── -->
   <main class="main-panel">
-
-    <!-- Vista: Datos de telemetría en tiempo real -->
-    {#if $activeView === 'datos'}
-      <ViewDatos />
+    {#if activeView === 'datos'}
+      <DatosView
+        {ROBOT_ID}
+        {telemetry}
+        {speedHistory}
+        {accelHistory}
+      />
+    {:else if activeView === 'controles'}
+      <ControlesView
+        {ROBOT_ID}
+        bind:thrustL
+        bind:thrustR
+        bind:heading
+        bind:thrust
+        bind:controlMode
+        {sendControl}
+        {emergencyStop}
+      />
+    {:else if activeView === 'bodega'}
+      <BodegaView
+        {robotMapPos}
+        {currentMission}
+        {activityLog}
+        bind:newMissionTarget
+        bind:newMissionPriority
+        {assignMission}
+      />
     {/if}
-
-    <!-- Vista: Controles manuales del robot -->
-    {#if $activeView === 'controles'}
-      <ViewControles />
-    {/if}
-
-    <!-- Vista: Estado de bodega y misiones -->
-    {#if $activeView === 'bodega'}
-      <ViewBodega />
-    {/if}
-
   </main>
 
 </div>
 
-<!-- ============================================================
-     ESTILOS GLOBALES — Sistema de diseño "Kinetic Labs"
-     ============================================================
-     Los estilos con :global() afectan a TODOS los componentes.
-     Los tokens CSS en :root son la fuente de verdad de colores,
-     tipografía y bordes de toda la aplicación.
-
-     Para cambiar la paleta completa, editá solo las variables
-     dentro de :global(:root).
-     ============================================================ -->
 <style>
-  /* ── RESET BÁSICO ────────────────────────────────────────────
-     Elimina márgenes y padding por defecto del navegador.
-     box-sizing: border-box hace que el padding no desborde
-     los anchos definidos con CSS. */
+  /* ── TOKENS DE DISEÑO ─────────────────────────────────────
+     Modifica estos valores para cambiar la paleta completa.
+     ─────────────────────────────────────────────────────── */
   :global(*) { box-sizing: border-box; margin: 0; padding: 0; }
-
   :global(body) {
     font-family: 'Inter', system-ui, sans-serif;
     background: var(--bg);
@@ -99,11 +165,8 @@
     min-height: 100vh;
   }
 
-  /* ── TOKENS DE DISEÑO ────────────────────────────────────────
-     Variables CSS globales. Modificar aquí cambia toda la UI.
-     Paleta: fondo oscuro azulado + acentos eléctricos. */
   :global(:root) {
-    /* Superficies (de más oscura a más clara) */
+    /* Colores principales del sistema Kinetic Labs */
     --bg:                  #11131c;
     --surface:             #11131c;
     --surface-low:         #191b24;
@@ -112,34 +175,30 @@
     --surface-highest:     #32343e;
     --surface-bright:      #373943;
 
-    /* Texto */
-    --on-surface:          #e1e1ef;  /* Texto principal */
-    --on-surface-variant:  #c2c6d7;  /* Etiquetas y texto secundario */
-    --outline-variant:     #424655;  /* Bordes sutiles */
+    --on-surface:          #e1e1ef;
+    --on-surface-variant:  #c2c6d7;
+    --outline-variant:     #424655;
 
-    /* Acentos del sistema de diseño */
-    --primary:             #b0c6ff;  /* Azul eléctrico — telemetría principal */
-    --primary-container:   #558dff;  /* Versión más intensa del primario */
-    --secondary:           #7dffa2;  /* Verde esmeralda — estado OK */
+    /* Acentos */
+    --primary:             #b0c6ff;  /* Azul eléctrico – datos de telemetría */
+    --primary-container:   #558dff;
+    --secondary:           #7dffa2;  /* Verde esmeralda – estado OK */
     --secondary-container: #05e777;
-    --tertiary:            #f7be00;  /* Ámbar — advertencias */
+    --tertiary:            #f7be00;  /* Ámbar – advertencias */
     --tertiary-container:  #b58a00;
-    --error:               #ffb4ab;  /* Rojo — errores críticos */
+    --error:               #ffb4ab;  /* Rojo – errores críticos */
     --error-container:     #93000a;
 
-    /* Tipografía monoespaciada (para valores de sensores) */
+    /* Tipografía */
     --font-mono: 'Roboto Mono', 'Courier New', monospace;
 
-    /* Radios de borde */
-    --radius-sm:   0.125rem;  /* Casi cuadrado — botones, badges */
-    --radius-md:   0.375rem;  /* Cards de métricas */
-    --radius-lg:   0.75rem;   /* Cards grandes */
+    /* Bordes */
+    --radius-sm:   0.125rem;
+    --radius-md:   0.375rem;
+    --radius-lg:   0.75rem;
   }
 
-  /* ── LAYOUT DE LA APP ────────────────────────────────────────
-     Flexbox horizontal: sidebar fijo + panel principal flexible.
-     height y overflow: hidden evitan que la app haga scroll
-     a nivel de página; el scroll queda dentro de .main-panel. */
+  /* ── LAYOUT GENERAL ──────────────────────────────────────── */
   .app {
     display: flex;
     height: 100vh;
@@ -147,8 +206,6 @@
     background: var(--bg);
   }
 
-  /* El panel principal ocupa todo el espacio sobrante y
-     permite scroll vertical interno. */
   .main-panel {
     flex: 1;
     overflow-y: auto;
@@ -156,4 +213,24 @@
     scrollbar-width: thin;
     scrollbar-color: var(--surface-bright) transparent;
   }
+
+  /* ── ESTILOS COMPARTIDOS POR VISTAS ─────────────────────── */
+  :global(.view) { padding: 2rem 2.5rem; }
+
+  /* Encabezado de vista */
+  :global(.view-header) {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid rgba(66, 70, 85, 0.3);
+    padding-bottom: 1rem;
+  }
+  :global(.view-title) {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--on-surface);
+    letter-spacing: 0.03em;
+  }
+  :global(.view-title-sub) { color: var(--on-surface-variant); font-weight: 400; }
 </style>

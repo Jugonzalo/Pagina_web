@@ -1,115 +1,79 @@
-<!-- ============================================================
-     VISTA: Controles Manuales
-     ============================================================
-     Permite controlar el robot manualmente mediante sliders.
-     Dos modos disponibles:
-       - Tracción directa: controla cada oruga independientemente
-       - Vectorial: define rumbo (heading) y empuje (thrust)
-
-     Los botones de envío y emergencia usan las funciones
-     de src/lib/api/control.js
-     ============================================================ -->
 <script>
-  import { ROBOT_ID } from '$lib/config/constants';
-  import { controlMode, thrustL, thrustR, heading, thrust } from '$lib/stores/robot';
-  import { sendControl, emergencyStop } from '$lib/api/control';
-
-  /**
-   * Construye el payload según el modo de control activo
-   * y lo envía a sendControl().
-   */
-  function handleSendControl() {
-    // El payload varía según el modo seleccionado
-    const payload = $controlMode === 'traccion'
-      ? { mode: 'traccion', thrustL: $thrustL, thrustR: $thrustR }
-      : { mode: 'vectorial', heading: $heading, thrust: $thrust };
-
-    sendControl(payload);
-  }
-
-  /**
-   * Llama a emergencyStop pasando los stores de thrust
-   * como objeto para que la función pueda resetearlos.
-   */
-  function handleEmergencyStop() {
-    emergencyStop({ thrustL, thrustR, thrust });
-  }
+  /** @type {string} */
+  export let ROBOT_ID;
+  /** @type {number} */
+  export let thrustL;
+  /** @type {number} */
+  export let thrustR;
+  /** @type {number} */
+  export let heading;
+  /** @type {number} */
+  export let thrust;
+  /** @type {string} */
+  export let controlMode;
+  /** @type {() => void} */
+  export let sendControl;
+  /** @type {() => void} */
+  export let emergencyStop;
 </script>
 
 <section class="view" id="view-controles">
 
-  <!-- Encabezado -->
   <header class="view-header">
-    <h1 class="view-title">
-      {ROBOT_ID} <span class="view-title-sub">| Controles</span>
-    </h1>
+    <h1 class="view-title">{ROBOT_ID} <span class="view-title-sub">| Controles</span></h1>
     <div class="override-badge">⚠ MODO MANUAL ACTIVO</div>
   </header>
 
-  <!-- ── SELECTOR DE MODO DE CONTROL ──────────────────────── -->
-  <!--
-    Dos modos:
-      traccion  → sliders independientes por oruga
-      vectorial → slider de rumbo + slider de empuje
-  -->
+  <!-- Selector de modo de control -->
   <div class="mode-selector">
     <button
       id="btn-mode-traccion"
-      class="mode-btn {$controlMode === 'traccion' ? 'mode-btn--active' : ''}"
-      on:click={() => controlMode.set('traccion')}
+      class="mode-btn {controlMode === 'traccion' ? 'mode-btn--active' : ''}"
+      on:click={() => controlMode = 'traccion'}
     >
       MODO 1: TRACCIÓN DIRECTA
     </button>
     <button
       id="btn-mode-vectorial"
-      class="mode-btn {$controlMode === 'vectorial' ? 'mode-btn--active' : ''}"
-      on:click={() => controlMode.set('vectorial')}
+      class="mode-btn {controlMode === 'vectorial' ? 'mode-btn--active' : ''}"
+      on:click={() => controlMode = 'vectorial'}
     >
       MODO 2: VECTORIAL
     </button>
   </div>
 
-  <!-- ── PANEL: TRACCIÓN DIRECTA ───────────────────────────── -->
-  <!--
-    Cada oruga tiene su propio slider. Los valores van de -100
-    (máxima reversa) a +100 (máxima velocidad hacia adelante).
-    bind:value conecta el slider directamente al store.
-  -->
-  {#if $controlMode === 'traccion'}
+  <!-- Controles de Tracción Directa -->
+  {#if controlMode === 'traccion'}
   <div class="control-panel">
     <div class="control-panel-title">CONTROL INDEPENDIENTE DE ORUGAS</div>
 
     <div class="sliders-grid">
-      <!-- Oruga izquierda -->
+      <!-- Slider oruga izquierda -->
       <div class="slider-group">
         <label for="slider-left" class="slider-label">ORUGA IZQUIERDA</label>
-        <div class="slider-value-display {$thrustL >= 0 ? 'positive' : 'negative'}">
-          {$thrustL > 0 ? '+' : ''}{$thrustL}%
-        </div>
+        <div class="slider-value-display {thrustL >= 0 ? 'positive' : 'negative'}">{thrustL > 0 ? '+' : ''}{thrustL}%</div>
         <input
           id="slider-left"
           type="range"
           min="-100"
           max="100"
           step="5"
-          bind:value={$thrustL}
+          bind:value={thrustL}
           class="control-slider"
         />
       </div>
 
-      <!-- Oruga derecha -->
+      <!-- Slider oruga derecha -->
       <div class="slider-group">
         <label for="slider-right" class="slider-label">ORUGA DERECHA</label>
-        <div class="slider-value-display {$thrustR >= 0 ? 'positive' : 'negative'}">
-          {$thrustR > 0 ? '+' : ''}{$thrustR}%
-        </div>
+        <div class="slider-value-display {thrustR >= 0 ? 'positive' : 'negative'}">{thrustR > 0 ? '+' : ''}{thrustR}%</div>
         <input
           id="slider-right"
           type="range"
           min="-100"
           max="100"
           step="5"
-          bind:value={$thrustR}
+          bind:value={thrustR}
           class="control-slider"
         />
       </div>
@@ -117,42 +81,38 @@
   </div>
   {/if}
 
-  <!-- ── PANEL: VECTORIAL ──────────────────────────────────── -->
-  <!--
-    El robot recibe un ángulo de rumbo (0-360°) y un nivel de
-    empuje (0-100%), y calcula internamente cómo mover cada oruga.
-  -->
-  {#if $controlMode === 'vectorial'}
+  <!-- Controles Vectoriales -->
+  {#if controlMode === 'vectorial'}
   <div class="control-panel">
     <div class="control-panel-title">CONTROL DE RUMBO Y EMPUJE</div>
 
     <div class="sliders-grid">
-      <!-- Rumbo (heading) -->
+      <!-- Slider de rumbo -->
       <div class="slider-group">
         <label for="slider-heading" class="slider-label">RUMBO (HEADING)</label>
-        <div class="slider-value-display positive">{$heading}°</div>
+        <div class="slider-value-display positive">{heading}°</div>
         <input
           id="slider-heading"
           type="range"
           min="0"
           max="360"
           step="5"
-          bind:value={$heading}
+          bind:value={heading}
           class="control-slider tertiary"
         />
       </div>
 
-      <!-- Empuje (thrust) -->
+      <!-- Slider de empuje -->
       <div class="slider-group">
         <label for="slider-thrust" class="slider-label">EMPUJE (THRUST)</label>
-        <div class="slider-value-display positive">{$thrust}%</div>
+        <div class="slider-value-display positive">{thrust}%</div>
         <input
           id="slider-thrust"
           type="range"
           min="0"
           max="100"
           step="5"
-          bind:value={$thrust}
+          bind:value={thrust}
           class="control-slider"
         />
       </div>
@@ -160,15 +120,12 @@
   </div>
   {/if}
 
-  <!-- ── BOTONES DE ACCIÓN ──────────────────────────────────── -->
+  <!-- Botones de acción -->
   <div class="control-actions">
-    <!-- Enviar el comando con los valores actuales de los sliders -->
-    <button id="btn-send-control" class="btn-primary" on:click={handleSendControl}>
+    <button id="btn-send-control" class="btn-primary" on:click={sendControl}>
       ENVIAR COMANDO
     </button>
-
-    <!-- Parada de emergencia: resetea todo inmediatamente -->
-    <button id="btn-emergency-stop" class="btn-danger" on:click={handleEmergencyStop}>
+    <button id="btn-emergency-stop" class="btn-danger" on:click={emergencyStop}>
       ■ PARADA DE EMERGENCIA
     </button>
   </div>
@@ -176,24 +133,6 @@
 </section>
 
 <style>
-  .view { padding: 2rem 2.5rem; }
-
-  /* ── ENCABEZADO ──────────────────────────────────────────── */
-  .view-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin-bottom: 2rem;
-    border-bottom: 1px solid rgba(66, 70, 85, 0.3);
-    padding-bottom: 1rem;
-  }
-  .view-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--on-surface);
-    letter-spacing: 0.03em;
-  }
-  .view-title-sub { color: var(--on-surface-variant); font-weight: 400; }
   .override-badge {
     font-size: 0.65rem;
     font-weight: 700;
@@ -204,7 +143,7 @@
     padding: 0.2rem 0.6rem;
   }
 
-  /* ── SELECTOR DE MODO ────────────────────────────────────── */
+  /* ── VISTA CONTROLES ────────────────────────────────────── */
   .mode-selector {
     display: flex;
     gap: 0.75rem;
@@ -230,7 +169,6 @@
     color: var(--on-surface);
   }
 
-  /* ── PANEL DE CONTROL ────────────────────────────────────── */
   .control-panel {
     background: var(--surface-mid);
     border-radius: var(--radius-md);
@@ -245,9 +183,9 @@
     margin-bottom: 1.25rem;
     text-transform: uppercase;
   }
+
   .sliders-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
 
-  /* ── SLIDER ──────────────────────────────────────────────── */
   .slider-group {
     display: flex;
     flex-direction: column;
@@ -268,7 +206,7 @@
   .slider-value-display.positive { color: var(--primary); }
   .slider-value-display.negative { color: var(--error); }
 
-  /* Slider personalizado (cross-browser) */
+  /* Slider personalizado */
   .control-slider {
     -webkit-appearance: none;
     width: 100%;
@@ -280,8 +218,7 @@
   }
   .control-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 16px;
-    height: 16px;
+    width: 16px; height: 16px;
     border-radius: 50%;
     background: var(--primary);
     cursor: pointer;
@@ -290,15 +227,15 @@
   .control-slider::-webkit-slider-thumb:hover {
     box-shadow: 0 0 0 4px rgba(176, 198, 255, 0.2);
   }
-  /* Variante ámbar para el slider de heading */
   .control-slider.tertiary::-webkit-slider-thumb { background: var(--tertiary); }
 
-  /* ── BOTONES ─────────────────────────────────────────────── */
   .control-actions {
     display: flex;
     gap: 1rem;
     align-items: center;
   }
+
+  /* Botones generales */
   .btn-primary {
     padding: 0.7rem 1.5rem;
     background: var(--primary-container);
@@ -313,6 +250,9 @@
     font-family: inherit;
   }
   .btn-primary:hover { opacity: 0.85; box-shadow: 0 0 12px rgba(176, 198, 255, 0.15); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary.btn-full { width: 100%; }
+
   .btn-danger {
     padding: 0.7rem 1.5rem;
     background: var(--error-container);
