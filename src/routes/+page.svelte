@@ -3,6 +3,18 @@
   import DatosView from '$lib/components/DatosView.svelte';
   import ControlesView from '$lib/components/ControlesView.svelte';
   import BodegaView from '$lib/components/BodegaView.svelte';
+  import {
+  ref,        // Crea una referencia a un nodo de la DB
+  set,        // Escribe (sobreescribe) un valor en un nodo
+  get,        // Lee el valor de un nodo UNA sola vez
+  update,     // Actualiza campos específicos sin sobreescribir
+  push,       // Agrega un nuevo elemento con ID autogenerado
+  remove,     // Elimina un nodo
+  onValue,    // Escucha cambios en TIEMPO REAL (suscripción)
+  off,          // Cancela una suscripción activa
+ }from 'firebase/database';
+ import { db } from '$lib/firebase';
+
 
   // ============================================================
   // CONSTANTES DE TEXTO
@@ -10,6 +22,12 @@
 
   const ROBOT_ID       = 'Yalent';
   const ACTIVE_PROTOCOL = 'PROTOCOLO EMERGENTE';
+
+  const RUTA_VELOCIDAD_DERECHA = "Escritura/Potencia_derecha";
+  const RUTA_VELOCIDAD_IZQUIERDA = "Escritura/Potencia_izquierda";
+  const RUTA_ANGULO = "Escritura/Angulo";
+  const RUTA_ESCRITURA = "Escritura";
+  
 
   // ============================================================
   // ESTADO DE NAVEGACIÓN
@@ -71,6 +89,8 @@
   let thrust      = 0;  // velocidad lineal
   let controlMode = 'traccion';    // forma del control
 
+
+
   // ============================================================
   // ESTADO DE CONEXIÓN (solo visual — lógica en el backend)
   // ============================================================
@@ -82,7 +102,6 @@
   // HANDLERS — conectar al backend según el proyecto
   // ============================================================
 
-  /** @param {string} mode */
   function setConnectionMode(mode) {   // seleccionador de modo de coneccion
     connectionMode     = mode;
     connectivityStatus = mode === 'offline' ? 'desconectado' : 'verificando';
@@ -91,7 +110,15 @@
   function sendControl() {    // boton de enviar comando
     // TODO: enviar payload al backend
     // o sea actualizar los datos que se muestran en la interfaz y cargarlo al firebase
+    if (controlMode === 'traccion') {
+    set(ref(db, RUTA_VELOCIDAD_IZQUIERDA ), Math.floor(thrustL * 2.55));
+    set(ref(db, RUTA_VELOCIDAD_DERECHA), Math.floor(thrustR * 2.55));
+  } else {
+    set(ref(db, RUTA_ANGULO), Math.floor(heading));
+    set(ref(db, RUTA_VELOCIDAD_IZQUIERDA), Math.floor(thrust * 2.55));
+    set(ref(db, RUTA_VELOCIDAD_DERECHA), Math.floor(thrust * 2.55));
   }
+}
 
   function assignMission() {   // boton de asignar mision
     if (!newMissionTarget.trim()) return;
@@ -103,7 +130,24 @@
     thrustR = 0;
     thrust  = 0;
     telemetry.status = 'DETENIDO';
+    sendControl();
   }
+
+  // enviar datos cada 0.3 segundos
+
+  
+
+
+
+  // escuchar datos reactivos
+  
+
+// // En onDestroy del componente Svelte:
+// onDestroy(() => {
+//   off(telemetryRef);  // Cancela la suscripción
+// });
+
+  
 </script>
 
 <div class="app">

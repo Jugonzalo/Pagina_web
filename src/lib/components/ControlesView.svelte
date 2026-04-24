@@ -59,6 +59,7 @@
           max="100"
           step="5"
           bind:value={thrustL}
+          on:input={sendControl}
           class="control-slider"
         />
       </div>
@@ -74,6 +75,7 @@
           max="100"
           step="5"
           bind:value={thrustR}
+          on:input={sendControl}
           class="control-slider"
         />
       </div>
@@ -98,6 +100,7 @@
           max="360"
           step="5"
           bind:value={heading}
+          on:input={sendControl}
           class="control-slider tertiary"
         />
       </div>
@@ -109,10 +112,11 @@
         <input
           id="slider-thrust"
           type="range"
-          min="0"
+          min="-100"
           max="100"
           step="5"
           bind:value={thrust}
+          on:input={sendControl}
           class="control-slider"
         />
       </div>

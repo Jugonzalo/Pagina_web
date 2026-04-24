@@ -16,16 +16,15 @@ import { getAnalytics }   from 'firebase/analytics';
 // Estos valores los encontrás en Firebase Console →
 // Configuración del proyecto → SDK setup and configuration
 const firebaseConfig = {
-  apiKey:            'AIzaSyCutgJmyEmB8EyjYv6VuqT62HgJogDQ-b4',
-  authDomain:        'project-yalent.firebaseapp.com',
-  databaseURL:       'https://project-yalent-default-rtdb.firebaseio.com',
-  projectId:         'project-yalent',
-  storageBucket:     'project-yalent.firebasestorage.app',
-  messagingSenderId: '574913104837',
-  appId:             '1:574913104837:web:f330dd9191412ae7a159ac',
-  measurementId:     'G-TKWN2DWVS8'
+  apiKey: "AIzaSyCutgJmyEmB8EyjYv6VuqT62HgJogDQ-b4",
+  authDomain: "project-yalent.firebaseapp.com",
+  databaseURL: "https://project-yalent-default-rtdb.firebaseio.com",
+  projectId: "project-yalent",
+  storageBucket: "project-yalent.firebasestorage.app",
+  messagingSenderId: "574913104837",
+  appId: "1:574913104837:web:f330dd9191412ae7a159ac",
+  measurementId: "G-TKWN2DWVS8"
 };
-
 // ── INICIALIZACIÓN ───────────────────────────────────────────
 const app = initializeApp(firebaseConfig);
 
@@ -39,7 +38,7 @@ export const db = getDatabase(app);
  * Instancia de Google Analytics (GA4).
  * Usala con logEvent() para registrar acciones del usuario.
  */
-export const analytics = getAnalytics(app);
+export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
 
 
 // ============================================================
