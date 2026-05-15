@@ -23,10 +23,14 @@
   const ROBOT_ID       = 'Yalent';
   const ACTIVE_PROTOCOL = 'PROTOCOLO EMERGENTE';
 
-  const RUTA_VELOCIDAD_DERECHA = "Escritura/Potencia_derecha";
-  const RUTA_VELOCIDAD_IZQUIERDA = "Escritura/Potencia_izquierda";
+  const RUTA_VELOCIDAD_DERECHA = "/Comandos/duty_der";
+  const RUTA_VELOCIDAD_IZQUIERDA = "/Comandos/duty_izq";
   const RUTA_ANGULO = "Escritura/Angulo";
   const RUTA_ESCRITURA = "Escritura";
+  const D_PARED_DERECHA = "/Telemetria/d_pared_derecha";
+  const D_PARED_IZQUIERDA = "/Telemetria/d_pared_izquierda";
+  const D_PARED_TRASERA = "/Telemetria/d_pared_trasera"
+
   
 
   // ============================================================
@@ -47,8 +51,15 @@
     yaw:         0.0,
     posX:        0.00,
     posY:        0.00,
+    v_total:      0.00,
+    dist_pared_der: 0.00,
+    dist_pared_izq: 0.00,
+    dist_pared_trasera: 0.00,
     status:      'LISTO'
   };
+
+
+  // aca tiene pinta que puedo ir añadiendo datos al historial por si quiero grabar aqui
 
   /** @type {number[]} */
   let speedHistory = [];
@@ -137,15 +148,34 @@
   // mientras no tenga lectura de sensores pondre esto.
   
   setInterval(function(){
-    get(ref(db, '/Escritura/Angulo')).then((snapshot) => {
+    get(ref(db, '/Telemetria/teta')).then((snapshot) => {
       telemetry.yaw = snapshot.val();
     });
-    get(ref(db, '/Escritura/Potencia_derecha')).then((snapshot) => {
+    get(ref(db, '/Telemetria/v_derecha')).then((snapshot) => {
       telemetry.motorR = snapshot.val() / 2.55;
     });
-    get(ref(db, '/Escritura/Potencia_izquierda')).then((snapshot) => {
+    get(ref(db, '/Telemetria/v_izquierda')).then((snapshot) => {
       telemetry.motorL = snapshot.val() / 2.55;
     });
+
+
+    // ------- creo que los de arriba estan conectados, los de abajo vere ------/////
+
+
+    get(ref(db, '/Telemetria/v_angular')).then((snapshot) => {
+      telemetry.angularVel = snapshot.val();
+    });
+    get(ref(db, '/Telemetria/v_total')).then((snapshot) => {
+      telemetry.v_total = snapshot.val() ;
+    });
+    get(ref(db, '/Telemetria/x_pos')).then((snapshot) => {
+      telemetry.posX = snapshot.val();
+    });
+    get(ref(db, '/Telemetria/y_pos')).then((snapshot) => {
+      telemetry.posY = snapshot.val();
+    });
+
+    
     
   }, 300);
 
