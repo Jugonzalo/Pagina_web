@@ -14,6 +14,7 @@
   off,          // Cancela una suscripción activa
  }from 'firebase/database';
  import { db } from '$lib/firebase';
+ import { onDestroy } from 'svelte';
 
 
   // ============================================================
@@ -23,14 +24,38 @@
   const ROBOT_ID       = 'Yalent';
   const ACTIVE_PROTOCOL = 'PROTOCOLO EMERGENTE';
 
-  const RUTA_VELOCIDAD_DERECHA = "/Comandos/duty_der";
-  const RUTA_VELOCIDAD_IZQUIERDA = "/Comandos/duty_izq";
-  const RUTA_ANGULO = "Escritura/Angulo";
-  const RUTA_ESCRITURA = "Escritura";
-  const D_PARED_DERECHA = "/Telemetria/d_pared_derecha";
-  const D_PARED_IZQUIERDA = "/Telemetria/d_pared_izquierda";
-  const D_PARED_TRASERA = "/Telemetria/d_pared_trasera"
+// ── TELEMETRÍA (lectura) ─────────────────────────────────────
+const RUTA_V_DER           = 'Telemetria/v_derecha';
+const RUTA_V_IZQ           = 'Telemetria/v_izquierda';
+const RUTA_V_TOTAL         = 'Telemetria/v_total';
+const RUTA_TETA            = 'Telemetria/teta';
+const RUTA_OMEGA           = 'Telemetria/v_angular';
+const RUTA_X               = 'Telemetria/x_pos';
+const RUTA_Y               = 'Telemetria/y_pos';
+const RUTA_D_PARED_DER     = 'Telemetria/d_pared_derecha';
+const RUTA_D_PARED_IZQ     = 'Telemetria/d_pared_izquierda';
+const RUTA_D_PARED_TRASERA = 'Telemetria/d_pared_trasera';
+const RUTA_PILAS           = 'Telemetria/pilas';
 
+// ── ESTADOS (lectura) ────────────────────────────────────────
+const RUTA_CONEXION_ESP     = 'Estados/python_a_esp';
+const RUTA_CONEXION_FB      = 'Estados/firebase_a_python';
+const RUTA_MODO_CONTROL     = 'Estados/tipo_control';
+const RUTA_FLAG_POS         = 'Estados/flag_pos';
+const RUTA_FLAG_OBSTACULO   = 'Estados/flag_obstaculo';
+const RUTA_EJECUTANDO       = 'Estados/ejecutando';
+const RUTA_GRABAR           = 'Estados/estado_grabacion';
+const RUTA_REINICIO         = 'Estados/reinicio_esp';
+
+// ── COMANDOS (escritura) ─────────────────────────────────────
+const RUTA_DUTY_DER   = 'Comandos/duty_der';
+const RUTA_DUTY_IZQ   = 'Comandos/duty_izq';
+const RUTA_TETA_REF   = 'Comandos/teta_ref';
+const RUTA_V_DER_REF  = 'Comandos/v_der_ref';
+const RUTA_V_IZQ_REF  = 'Comandos/v_izq_ref';
+const RUTA_V_TOTAL_REF = 'Comandos/v_total_ref';
+const RUTA_X_REF      = 'Comandos/x_ref';
+const RUTA_Y_REF      = 'Comandos/y_ref';
   
 
   // ============================================================
@@ -94,10 +119,12 @@
   // ESTADO DE CONTROLES MANUALES
   // ============================================================
 
-  let thrustL     = 0;  // control velocidad izquierda    
-  let thrustR     = 0;  // control velocidad derecha
+  let thrustL     = 0;  // duty izquierda    
+  let thrustR     = 0;  // duty derecha
   let heading     = 0;  // angulo 
   let thrust      = 0;  // velocidad lineal
+  let comando_v_der = 0; 
+  let comando_v_izq = 0;
   let controlMode = 'traccion';    // forma del control
 
 
@@ -121,13 +148,14 @@
   function sendControl() {    // boton de enviar comando
     // TODO: enviar payload al backend
     // o sea actualizar los datos que se muestran en la interfaz y cargarlo al firebase
-    if (controlMode === 'traccion') {
-    set(ref(db, RUTA_VELOCIDAD_IZQUIERDA ), Math.floor(thrustL * 2.55));
-    set(ref(db, RUTA_VELOCIDAD_DERECHA), Math.floor(thrustR * 2.55));
-  } else {
-    set(ref(db, RUTA_ANGULO), Math.floor(heading));
-    set(ref(db, RUTA_VELOCIDAD_IZQUIERDA), Math.floor(thrust * 2.55));
-    set(ref(db, RUTA_VELOCIDAD_DERECHA), Math.floor(thrust * 2.55));
+    if (controlMode === 'Duty') {
+    set(ref(db, RUTA_DUTY_IZQ  ), Math.floor(thrustL * 2.55));
+    set(ref(db, RUTA_DUTY_DER ), Math.floor(thrustR * 2.55));
+    set(ref(db, RUTA_TETA_REF), Math.floor(heading));
+  } if (controlMode === 'Vel')  {
+    set(ref(db, RUTA_TETA_REF), Math.floor(heading));
+    set(ref(db, RUTA_V_IZQ_REF ), comando_v_izq);
+    set(ref(db, RUTA_V_DER_REF), comando_v_der);
   }
 }
 
@@ -147,37 +175,32 @@
   // leer datos cada 0.3 segundos
   // mientras no tenga lectura de sensores pondre esto.
   
-  setInterval(function(){
-    get(ref(db, '/Telemetria/teta')).then((snapshot) => {
-      telemetry.yaw = snapshot.val();
-    });
-    get(ref(db, '/Telemetria/v_derecha')).then((snapshot) => {
-      telemetry.motorR = snapshot.val() / 2.55;
-    });
-    get(ref(db, '/Telemetria/v_izquierda')).then((snapshot) => {
-      telemetry.motorL = snapshot.val() / 2.55;
-    });
+// ── SUSCRIPCIÓN EN TIEMPO REAL ───────────────────────────────
+const telemetriaRef = ref(db, 'Telemetria');
 
+const unsubscribe = onValue(telemetriaRef, (snapshot) => {
+  const d = snapshot.val();
+  if (!d) return;
 
-    // ------- creo que los de arriba estan conectados, los de abajo vere ------/////
+  telemetry.motorR            = (d.v_derecha  ?? 0) ;
+  telemetry.motorL            = (d.v_izquierda ?? 0) ;
+  telemetry.v_total           = d.v_total    ?? 0;
+  telemetry.yaw               = d.teta       ?? 0;
+  telemetry.angularVel        = d.v_angular  ?? 0;
+  telemetry.posX              = d.x_pos      ?? 0;
+  telemetry.posY              = d.y_pos      ?? 0;
+  telemetry.dist_pared_der    = d.d_pared_derecha  ?? 0;
+  telemetry.dist_pared_izq    = d.d_pared_izquierda ?? 0;
+  telemetry.dist_pared_trasera = d.d_pared_trasera  ?? 0;
+  telemetry.pilas             = d.pilas      ?? 0;
 
+  // Forzar reactividad de Svelte
+  telemetry = telemetry;
+});
 
-    get(ref(db, '/Telemetria/v_angular')).then((snapshot) => {
-      telemetry.angularVel = snapshot.val();
-    });
-    get(ref(db, '/Telemetria/v_total')).then((snapshot) => {
-      telemetry.v_total = snapshot.val() ;
-    });
-    get(ref(db, '/Telemetria/x_pos')).then((snapshot) => {
-      telemetry.posX = snapshot.val();
-    });
-    get(ref(db, '/Telemetria/y_pos')).then((snapshot) => {
-      telemetry.posY = snapshot.val();
-    });
-
-    
-    
-  }, 300);
+onDestroy(() => {
+  unsubscribe();
+});
 
   
 
@@ -224,6 +247,8 @@
         bind:heading
         bind:thrust
         bind:controlMode
+        bind:comando_v_der
+        bind:comando_v_izq
         {sendControl}
         {emergencyStop}
       />

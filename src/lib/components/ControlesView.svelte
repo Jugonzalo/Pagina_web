@@ -7,6 +7,11 @@
   export let thrustR;
   /** @type {number} */
   export let heading;
+    // ---------------------------------------ACA ANDA AÑADIENDO LOS DISTINTOS COMANDOS --------------
+  /** @type {number} */
+  export let comando_v_der;
+  /** @type {number} */
+  export let comando_v_izq;
   /** @type {number} */
   export let thrust;
   /** @type {string} */
@@ -27,30 +32,37 @@
   <!-- Selector de modo de control -->
   <div class="mode-selector">
     <button
-      id="btn-mode-traccion"
-      class="mode-btn {controlMode === 'traccion' ? 'mode-btn--active' : ''}"
-      on:click={() => controlMode = 'traccion'}
+      id="btn-mode-Duty"
+      class="mode-btn {controlMode === 'Duty' ? 'mode-btn--active' : ''}"
+      on:click={() => controlMode = 'Duty'}
     >
-      MODO 1: TRACCIÓN DIRECTA
+      MODO 1: Duty
     </button>
     <button
-      id="btn-mode-vectorial"
-      class="mode-btn {controlMode === 'vectorial' ? 'mode-btn--active' : ''}"
-      on:click={() => controlMode = 'vectorial'}
+      id="btn-mode-Vel"
+      class="mode-btn {controlMode === 'Vel' ? 'mode-btn--active' : ''}"
+      on:click={() => controlMode = 'Vel'}
     >
-      MODO 2: VECTORIAL
+      MODO 2: V_REF
+    </button>
+    <button
+      id="btn-mode_Pos"
+      class="mode-btn {controlMode === 'Pos' ? 'mode-btn--active' : ''}"
+      on:click={() => controlMode = 'Pos'}
+    >
+      MODO 3: Cordenadas
     </button>
   </div>
 
-  <!-- Controles de Tracción Directa -->
-  {#if controlMode === 'traccion'}
+  <!-- Controles de Duty -->
+  {#if controlMode === 'Duty'}
   <div class="control-panel">
-    <div class="control-panel-title">CONTROL INDEPENDIENTE DE ORUGAS</div>
+    <div class="control-panel-title">CONTROL SEGUN DUTY CYCLE</div>
 
     <div class="sliders-grid">
       <!-- Slider oruga izquierda -->
       <div class="slider-group">
-        <label for="slider-left" class="slider-label">ORUGA IZQUIERDA</label>
+        <label for="slider-left" class="slider-label">RUEDA IZQUIERDA</label>
         <div class="slider-value-display {thrustL >= 0 ? 'positive' : 'negative'}">{thrustL > 0 ? '+' : ''}{thrustL}%</div>
         <input
           id="slider-left"
@@ -64,12 +76,11 @@
         />
       </div>
 
-      <!-- Slider oruga derecha -->
       <div class="slider-group">
-        <label for="slider-right" class="slider-label">ORUGA DERECHA</label>
+        <label for="slider-left_velocidad" class="slider-label">RUEDA DERECHA</label>
         <div class="slider-value-display {thrustR >= 0 ? 'positive' : 'negative'}">{thrustR > 0 ? '+' : ''}{thrustR}%</div>
         <input
-          id="slider-right"
+          id="slider-left"
           type="range"
           min="-100"
           max="100"
@@ -79,17 +90,64 @@
           class="control-slider"
         />
       </div>
+
+
+
+      <!-- Slider conjunto -->
+      <div class="slider-group">
+        <label for="slider-thrust" class="slider-label">EMPUJE (THRUST)</label>
+        <div class="slider-value-display positive">{thrust}%</div>
+        <input
+          id="slider-thrust"
+          type="range"
+          min="-100"
+          max="100"
+          step="5"
+          bind:value={thrust}
+          on:input={sendControl}
+          class="control-slider"
+        />
+      </div>
     </div>
   </div>
   {/if}
 
-  <!-- Controles Vectoriales -->
-  {#if controlMode === 'vectorial'}
+  <!-- Controles Vel -->
+  {#if controlMode === 'Vel'}
   <div class="control-panel">
-    <div class="control-panel-title">CONTROL DE RUMBO Y EMPUJE</div>
+    <div class="control-panel-title">CONTROL DE V REF</div>
 
     <div class="sliders-grid">
       <!-- Slider de rumbo -->
+       <div class="slider-group">
+        <label for="slider-left" class="slider-label">RUEDA IZQUIERDA</label>
+        <div class="slider-value-display {comando_v_izq >= 0 ? 'positive' : 'negative'}">{comando_v_izq > 0 ? '+' : ''}{comando_v_izq}m/s</div>
+        <input
+          id="slider-left"
+          type="range"
+          min="-1"
+          max="1"
+          step="0.05"
+          bind:value={comando_v_izq}
+          on:input={sendControl}
+          class="control-slider"
+        />
+      </div>
+
+      <div class="slider-group">
+        <label for="slider-left_velocidad" class="slider-label">RUEDA DERECHA</label>
+        <div class="slider-value-display {comando_v_der >= 0 ? 'positive' : 'negative'}">{comando_v_der > 0 ? '+' : ''}{comando_v_der}m/s</div>
+        <input
+          id="slider-left"
+          type="range"
+          min="-1"
+          max="1"
+          step="0.05"
+          bind:value={comando_v_der}
+          on:input={sendControl}
+          class="control-slider"
+        />
+      </div>
       <div class="slider-group">
         <label for="slider-heading" class="slider-label">RUMBO (HEADING)</label>
         <div class="slider-value-display positive">{heading}°</div>
@@ -112,9 +170,9 @@
         <input
           id="slider-thrust"
           type="range"
-          min="-100"
-          max="100"
-          step="5"
+          min="-1"
+          max="1"
+          step="0.05"
           bind:value={thrust}
           on:input={sendControl}
           class="control-slider"
@@ -126,9 +184,6 @@
 
   <!-- Botones de acción -->
   <div class="control-actions">
-    <button id="btn-send-control" class="btn-primary" on:click={sendControl}>
-      ENVIAR COMANDO
-    </button>
     <button id="btn-emergency-stop" class="btn-danger" on:click={emergencyStop}>
       ■ PARADA DE EMERGENCIA
     </button>

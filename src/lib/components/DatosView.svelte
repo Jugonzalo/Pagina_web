@@ -21,8 +21,8 @@
       series: [
         {
           type: 'gauge',
-          min: -100,
-          max: 100,
+          min: -1,
+          max: 1,
           axisLine: {
             lineStyle: {
               width: 10,
