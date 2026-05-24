@@ -7,6 +7,7 @@
   export let thrustR;
   /** @type {number} */
   export let heading;
+  
     // ---------------------------------------ACA ANDA AÑADIENDO LOS DISTINTOS COMANDOS --------------
   /** @type {number} */
   export let comando_v_der;
@@ -20,6 +21,9 @@
   export let sendControl;
   /** @type {() => void} */
   export let emergencyStop;
+  /** @type {() => void} */
+  export let syncThrustToWheels;
+
 </script>
 
 <section class="view" id="view-controles">
@@ -125,8 +129,8 @@
         <input
           id="slider-left"
           type="range"
-          min="-1"
-          max="1"
+          min="-0.7"
+          max="0.7"
           step="0.05"
           bind:value={comando_v_izq}
           on:input={sendControl}
@@ -135,13 +139,13 @@
       </div>
 
       <div class="slider-group">
-        <label for="slider-left_velocidad" class="slider-label">RUEDA DERECHA</label>
+        <label for="slider-der_velocidad" class="slider-label">RUEDA DERECHA</label>
         <div class="slider-value-display {comando_v_der >= 0 ? 'positive' : 'negative'}">{comando_v_der > 0 ? '+' : ''}{comando_v_der}m/s</div>
         <input
           id="slider-left"
           type="range"
-          min="-1"
-          max="1"
+          min="-0.7"
+          max="0.7"
           step="0.05"
           bind:value={comando_v_der}
           on:input={sendControl}
@@ -170,11 +174,11 @@
         <input
           id="slider-thrust"
           type="range"
-          min="-1"
-          max="1"
+          min="-0.7"
+          max="0.7"
           step="0.05"
           bind:value={thrust}
-          on:input={sendControl}
+          on:input={syncThrustToWheels}
           class="control-slider"
         />
       </div>

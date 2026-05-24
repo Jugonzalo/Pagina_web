@@ -158,6 +158,11 @@ const RUTA_Y_REF      = 'Comandos/y_ref';
     set(ref(db, RUTA_V_DER_REF), comando_v_der);
   }
 }
+  function syncThrustToWheels() {
+    comando_v_izq = thrust;
+    comando_v_der = thrust;
+    sendControl();
+  }
 
   function assignMission() {   // boton de asignar mision
     if (!newMissionTarget.trim()) return;
@@ -168,6 +173,9 @@ const RUTA_Y_REF      = 'Comandos/y_ref';
     thrustL = 0;
     thrustR = 0;
     thrust  = 0;
+    comando_v_izq = 0;
+    comando_v_der = 0;
+
     telemetry.status = 'DETENIDO';
     sendControl();
   }
@@ -251,6 +259,7 @@ onDestroy(() => {
         bind:comando_v_izq
         {sendControl}
         {emergencyStop}
+        {syncThrustToWheels}
       />
     {:else if activeView === 'bodega'}
       <BodegaView
