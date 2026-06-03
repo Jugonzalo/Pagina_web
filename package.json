@@ -63,6 +63,7 @@
 	"dependencies": {
 		"echarts": "^6.0.0",
 		"firebase": "^12.12.1",
-		"firebase-svelte": "^2.0.1"
+		"firebase-svelte": "^2.0.1",
+		"mqtt": "^5.15.1"
 	}
 }

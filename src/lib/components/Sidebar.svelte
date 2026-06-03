@@ -1,4 +1,6 @@
 <script>
+  import { dataSource, mqttBrokerUrl, mqttStatus } from '$lib/dataSource.js';
+
   /** @type {string} */
   export let activeView;
   /** @type {string} */
@@ -24,6 +26,11 @@
       'ERROR':         'status-error'
     };
     return map[status] ?? 'status-ready';
+  }
+
+  /** @param {'firebase' | 'mqtt'} src */
+  function setDataSource(src) {
+    dataSource.set(src);
   }
 </script>
 
@@ -70,10 +77,80 @@
     </button>
   </nav>
 
-  <!-- Selector de modo de conexión -->
+  <!-- ── SELECTOR DE FUENTE DE DATOS ──────────────────── -->
   <div class="conn-mode-section">
     <div class="conn-mode-label">FUENTE DE DATOS</div>
 
+    <!-- Firebase / MQTT -->
+    <div class="source-buttons">
+      <button
+        id="btn-source-firebase"
+        class="source-btn {$dataSource === 'firebase' ? 'source-btn--active firebase' : ''}"
+        title="Leer y escribir desde Firebase Realtime Database"
+        on:click={() => setDataSource('firebase')}
+      >
+        🔥 FIREBASE
+      </button>
+      <button
+        id="btn-source-mqtt"
+        class="source-btn {$dataSource === 'mqtt' ? 'source-btn--active mqtt' : ''}"
+        title="Leer y escribir desde broker MQTT (WebSocket)"
+        on:click={() => setDataSource('mqtt')}
+      >
+        📡 MQTT
+      </button>
+    </div>
+
+    <!-- Campo de URL del broker (visible solo cuando MQTT activo) -->
+    {#if $dataSource === 'mqtt'}
+      <div class="broker-field">
+        <label for="mqtt-broker-url" class="broker-label">BROKER URL</label>
+        <input
+          id="mqtt-broker-url"
+          type="text"
+          class="broker-input"
+          bind:value={$mqttBrokerUrl}
+          placeholder="ws://host:9001"
+        />
+      </div>
+
+      <!-- Estado de conexión MQTT -->
+      <div class="conn-status-row">
+        {#if $mqttStatus === 'connecting'}
+          <span class="conn-dot conn-dot--checking"></span>
+          <span class="conn-status-text">CONECTANDO...</span>
+        {:else if $mqttStatus === 'connected'}
+          <span class="conn-dot conn-dot--online"></span>
+          <span class="conn-status-text">MQTT CONECTADO</span>
+        {:else if $mqttStatus === 'error'}
+          <span class="conn-dot conn-dot--error"></span>
+          <span class="conn-status-text">ERROR MQTT</span>
+        {:else}
+          <span class="conn-dot conn-dot--offline"></span>
+          <span class="conn-status-text">MQTT DESCONECTADO</span>
+        {/if}
+      </div>
+    {:else}
+      <!-- Estado de conexión Firebase -->
+      <div class="conn-status-row">
+        {#if connectivityStatus === 'verificando'}
+          <span class="conn-dot conn-dot--checking"></span>
+          <span class="conn-status-text">VERIFICANDO...</span>
+        {:else if connectivityStatus === 'conectado'}
+          <span class="conn-dot conn-dot--online"></span>
+          <span class="conn-status-text">FIREBASE OK</span>
+        {:else if connectionMode === 'offline'}
+          <span class="conn-dot conn-dot--offline"></span>
+          <span class="conn-status-text">SIMULACIÓN LOCAL</span>
+        {:else}
+          <span class="conn-dot conn-dot--online"></span>
+          <span class="conn-status-text">FIREBASE ACTIVO</span>
+        {/if}
+      </div>
+    {/if}
+
+    <!-- Modos de conexión (offline/auto/online) -->
+    <div class="conn-mode-label" style="margin-top:0.5rem">MODO</div>
     <div class="conn-mode-buttons">
       <button
         id="btn-mode-offline"
@@ -99,24 +176,6 @@
       >
         ONLINE
       </button>
-    </div>
-
-    <div class="conn-status-row">
-      {#if connectionMode === 'offline'}
-        <span class="conn-dot conn-dot--offline"></span>
-        <span class="conn-status-text">SIMULACIÓN LOCAL</span>
-      {:else if connectivityStatus === 'verificando'}
-        <span class="conn-dot conn-dot--checking"></span>
-        <span class="conn-status-text">VERIFICANDO...</span>
-      {:else if connectivityStatus === 'conectado'}
-        <span class="conn-dot conn-dot--online"></span>
-        <span class="conn-status-text">API CONECTADA</span>
-      {:else}
-        <span class="conn-dot conn-dot--offline"></span>
-        <span class="conn-status-text">
-          {connectionMode === 'auto' ? 'SIM. (sin API)' : 'SIN CONEXIÓN'}
-        </span>
-      {/if}
     </div>
   </div>
 
@@ -229,6 +288,66 @@
     color: var(--on-surface-variant);
     text-transform: uppercase;
   }
+
+  /* Selector Firebase / MQTT */
+  .source-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+  .source-btn {
+    padding: 0.35rem 0;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--outline-variant);
+    background: transparent;
+    color: var(--on-surface-variant);
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    text-align: center;
+  }
+  .source-btn:hover { border-color: var(--on-surface-variant); color: var(--on-surface); }
+  .source-btn--active.firebase {
+    background: rgba(255, 150, 50, 0.12);
+    border-color: #ff9632;
+    color: #ff9632;
+  }
+  .source-btn--active.mqtt {
+    background: rgba(176, 198, 255, 0.12);
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  /* Campo de URL del broker */
+  .broker-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .broker-label {
+    font-size: 0.52rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    color: var(--on-surface-variant);
+    text-transform: uppercase;
+  }
+  .broker-input {
+    background: var(--surface-high);
+    border: 1px solid var(--outline-variant);
+    border-radius: var(--radius-sm);
+    color: var(--on-surface);
+    font-size: 0.6rem;
+    font-family: var(--font-mono);
+    padding: 0.3rem 0.5rem;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+  .broker-input:focus { border-color: var(--primary); }
+
   .conn-mode-buttons {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -280,6 +399,7 @@
   .conn-dot--offline  { background: var(--on-surface-variant); opacity: 0.5; }
   .conn-dot--checking { background: var(--tertiary); animation: pulse 0.8s infinite; }
   .conn-dot--online   { background: var(--secondary); animation: pulse 2s infinite; }
+  .conn-dot--error    { background: var(--error); animation: pulse 0.5s infinite; }
   .conn-status-text {
     font-size: 0.58rem;
     letter-spacing: 0.05em;

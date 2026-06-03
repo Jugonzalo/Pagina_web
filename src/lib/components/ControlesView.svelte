@@ -129,8 +129,8 @@
         <input
           id="slider-left"
           type="range"
-          min="-0.7"
-          max="0.7"
+          min="-0.5"
+          max="0.5"
           step="0.05"
           bind:value={comando_v_izq}
           on:input={sendControl}
@@ -144,8 +144,8 @@
         <input
           id="slider-left"
           type="range"
-          min="-0.7"
-          max="0.7"
+          min="-0.5"
+          max="0.5"
           step="0.05"
           bind:value={comando_v_der}
           on:input={sendControl}
@@ -174,8 +174,8 @@
         <input
           id="slider-thrust"
           type="range"
-          min="-0.7"
-          max="0.7"
+          min="-0.5"
+          max="0.5  "
           step="0.05"
           bind:value={thrust}
           on:input={syncThrustToWheels}

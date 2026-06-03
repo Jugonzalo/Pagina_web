@@ -3,88 +3,103 @@
   import DatosView from '$lib/components/DatosView.svelte';
   import ControlesView from '$lib/components/ControlesView.svelte';
   import BodegaView from '$lib/components/BodegaView.svelte';
-  import {
-  ref,        // Crea una referencia a un nodo de la DB
-  set,        // Escribe (sobreescribe) un valor en un nodo
-  get,        // Lee el valor de un nodo UNA sola vez
-  update,     // Actualiza campos específicos sin sobreescribir
-  push,       // Agrega un nuevo elemento con ID autogenerado
-  remove,     // Elimina un nodo
-  onValue,    // Escucha cambios en TIEMPO REAL (suscripción)
-  off,          // Cancela una suscripción activa
- }from 'firebase/database';
- import { db } from '$lib/firebase';
- import { onDestroy } from 'svelte';
 
+  // ── Firebase ─────────────────────────────────────────────────
+  import {
+    ref, set, get, update, push, remove, onValue, off,
+  } from 'firebase/database';
+  import { db } from '$lib/firebase';
+
+  // ── MQTT ─────────────────────────────────────────────────────
+  import {
+    mqttTopics,
+    connectMQTT, disconnectMQTT,
+    subscribeTopic, unsubscribeTopic,
+    publishMQTT, getMqttClient,
+  } from '$lib/mqtt.js';
+  import { dataSource, mqttBrokerUrl, mqttStatus } from '$lib/dataSource.js';
+
+  import { onDestroy } from 'svelte';
+  import { get as storeGet } from 'svelte/store';
 
   // ============================================================
   // CONSTANTES DE TEXTO
   // ============================================================
 
-  const ROBOT_ID       = 'Yalent';
+  const ROBOT_ID        = 'Yalent';
   const ACTIVE_PROTOCOL = 'PROTOCOLO EMERGENTE';
 
-// ── TELEMETRÍA (lectura) ─────────────────────────────────────
-const RUTA_V_DER           = 'Telemetria/v_derecha';
-const RUTA_V_IZQ           = 'Telemetria/v_izquierda';
-const RUTA_V_TOTAL         = 'Telemetria/v_total';
-const RUTA_TETA            = 'Telemetria/teta';
-const RUTA_OMEGA           = 'Telemetria/v_angular';
-const RUTA_X               = 'Telemetria/x_pos';
-const RUTA_Y               = 'Telemetria/y_pos';
-const RUTA_D_PARED_DER     = 'Telemetria/d_pared_derecha';
-const RUTA_D_PARED_IZQ     = 'Telemetria/d_pared_izquierda';
-const RUTA_D_PARED_TRASERA = 'Telemetria/d_pared_trasera';
-const RUTA_PILAS           = 'Telemetria/pilas';
-
-// ── ESTADOS (lectura) ────────────────────────────────────────
-const RUTA_CONEXION_ESP     = 'Estados/python_a_esp';
-const RUTA_CONEXION_FB      = 'Estados/firebase_a_python';
-const RUTA_MODO_CONTROL     = 'Estados/tipo_control';
-const RUTA_FLAG_POS         = 'Estados/flag_pos';
-const RUTA_FLAG_OBSTACULO   = 'Estados/flag_obstaculo';
-const RUTA_EJECUTANDO       = 'Estados/ejecutando';
-const RUTA_GRABAR           = 'Estados/estado_grabacion';
-const RUTA_REINICIO         = 'Estados/reinicio_esp';
-
-// ── COMANDOS (escritura) ─────────────────────────────────────
-const RUTA_DUTY_DER   = 'Comandos/duty_der';
-const RUTA_DUTY_IZQ   = 'Comandos/duty_izq';
-const RUTA_TETA_REF   = 'Comandos/teta_ref';
-const RUTA_V_DER_REF  = 'Comandos/v_der_ref';
-const RUTA_V_IZQ_REF  = 'Comandos/v_izq_ref';
-const RUTA_V_TOTAL_REF = 'Comandos/v_total_ref';
-const RUTA_X_REF      = 'Comandos/x_ref';
-const RUTA_Y_REF      = 'Comandos/y_ref';
-  
+  // ── RUTAS FIREBASE ───────────────────────────────────────────
+  const FB = {
+    telemetria: {
+      v_der:           'Telemetria/v_derecha',
+      v_izq:           'Telemetria/v_izquierda',
+      v_total:         'Telemetria/v_total',
+      teta:            'Telemetria/teta',
+      omega:           'Telemetria/v_angular',
+      x:               'Telemetria/x_pos',
+      y:               'Telemetria/y_pos',
+      d_pared_der:     'Telemetria/d_pared_derecha',
+      d_pared_izq:     'Telemetria/d_pared_izquierda',
+      d_pared_trasera: 'Telemetria/d_pared_trasera',
+      pilas:           'Telemetria/pilas',
+    },
+    estados: {
+      conexion_esp:      'Estados/python_a_esp',
+      conexion_firebase: 'Estados/firebase_a_python',
+      modo_control:      'Estados/tipo_control',
+      flag_pos:          'Estados/flag_pos',
+      flag_obstaculo:    'Estados/flag_obstaculo',
+      ejecutando:        'Estados/ejecutando',
+      grabar:            'Estados/estado_grabacion',
+      reinicio:          'Estados/reinicio_esp',
+    },
+    comandos: {
+      duty_der:    'Comandos/duty_der',
+      duty_izq:    'Comandos/duty_izq',
+      teta_ref:    'Comandos/teta_ref',
+      v_der_ref:   'Comandos/v_der_ref',
+      v_izq_ref:   'Comandos/v_izq_ref',
+      v_total_ref: 'Comandos/v_total_ref',
+      x_ref:       'Comandos/x_ref',
+      y_ref:       'Comandos/y_ref',
+    },
+  };
 
   // ============================================================
   // ESTADO DE NAVEGACIÓN
   // ============================================================
 
-  /** Vista activa: 'datos' | 'controles' | 'bodega' */
   let activeView = 'datos';
 
   // ============================================================
-  // DATOS DE TELEMETRÍA (valores iniciales — actualizar desde backend)
+  // FUENTE DE DATOS — store reactivo
   // ============================================================
 
-  let telemetry = {       // estps datpos se deben actualizar desde el firebase
-    motorL:      0.00,
-    motorR:      0.00,
-    angularVel:  0.000,
-    yaw:         0.0,
-    posX:        0.00,
-    posY:        0.00,
-    v_total:      0.00,
-    dist_pared_der: 0.00,
-    dist_pared_izq: 0.00,
-    dist_pared_trasera: 0.00,
-    status:      'LISTO'
+  let currentSource = 'firebase';
+  let brokerUrl     = 'ws://localhost:9001';
+
+  const unsubSource = dataSource.subscribe(v => { currentSource = v; });
+  const unsubBroker = mqttBrokerUrl.subscribe(v => { brokerUrl = v; });
+
+  // ============================================================
+  // DATOS DE TELEMETRÍA
+  // ============================================================
+
+  let telemetry = {
+    motorL:              0.00,
+    motorR:              0.00,
+    angularVel:          0.000,
+    yaw:                 0.0,
+    posX:                0.00,
+    posY:                0.00,
+    v_total:             0.00,
+    dist_pared_der:      0.00,
+    dist_pared_izq:      0.00,
+    dist_pared_trasera:  0.00,
+    pilas:               0,
+    status:              'LISTO',
   };
-
-
-  // aca tiene pinta que puedo ir añadiendo datos al historial por si quiero grabar aqui
 
   /** @type {number[]} */
   let speedHistory = [];
@@ -101,7 +116,7 @@ const RUTA_Y_REF      = 'Comandos/y_ref';
     id:          'MSN-2041',
     description: 'Reabastecimiento — Estante C-12',
     status:      'EN PROGRESO',
-    progress:    62
+    progress:    62,
   };
 
   let activityLog = [
@@ -109,7 +124,7 @@ const RUTA_Y_REF      = 'Comandos/y_ref';
     { time: '21:13:51', msg: 'Robot en zona de carga C'         },
     { time: '21:13:30', msg: 'Trayectoria recalculada'          },
     { time: '21:12:08', msg: 'Batería al 87%'                   },
-    { time: '21:11:45', msg: 'Evitación de obstáculo detectada' }
+    { time: '21:11:45', msg: 'Evitación de obstáculo detectada' },
   ];
 
   let newMissionTarget   = '';
@@ -119,110 +134,266 @@ const RUTA_Y_REF      = 'Comandos/y_ref';
   // ESTADO DE CONTROLES MANUALES
   // ============================================================
 
-  let thrustL     = 0;  // duty izquierda    
-  let thrustR     = 0;  // duty derecha
-  let heading     = 0;  // angulo 
-  let thrust      = 0;  // velocidad lineal
-  let comando_v_der = 0; 
+  let thrustL       = 0;
+  let thrustR       = 0;
+  let heading       = 0;
+  let thrust        = 0;
+  let comando_v_der = 0;
   let comando_v_izq = 0;
-  let controlMode = 'traccion';    // forma del control
-
-
+  let controlMode   = 'traccion';
 
   // ============================================================
-  // ESTADO DE CONEXIÓN (solo visual — lógica en el backend)
+  // ESTADO DE CONEXIÓN
   // ============================================================
 
   let connectionMode     = 'auto';
   let connectivityStatus = 'desconectado';
 
-  // ============================================================
-  // HANDLERS — conectar al backend según el proyecto
-  // ============================================================
-
-  function setConnectionMode(mode) {   // seleccionador de modo de coneccion
+  /** @param {string} mode */
+  function setConnectionMode(mode) {
     connectionMode     = mode;
     connectivityStatus = mode === 'offline' ? 'desconectado' : 'verificando';
   }
 
-  function sendControl() {    // boton de enviar comando
-    // TODO: enviar payload al backend
-    // o sea actualizar los datos que se muestran en la interfaz y cargarlo al firebase
-    if (controlMode === 'Duty') {
-    set(ref(db, RUTA_DUTY_IZQ  ), Math.floor(thrustL * 2.55));
-    set(ref(db, RUTA_DUTY_DER ), Math.floor(thrustR * 2.55));
-    set(ref(db, RUTA_TETA_REF), Math.floor(heading));
-  } if (controlMode === 'Vel')  {
-    set(ref(db, RUTA_TETA_REF), Math.floor(heading));
-    set(ref(db, RUTA_V_IZQ_REF ), comando_v_izq);
-    set(ref(db, RUTA_V_DER_REF), comando_v_der);
+  // ============================================================
+  // SUSCRIPCIÓN FIREBASE
+  // ============================================================
+
+  const telemetriaRef = ref(db, 'Telemetria');
+
+  /** @type {(() => void) | null} */
+  let firebaseUnsub = null;
+
+  function startFirebase() {
+    if (firebaseUnsub) return;
+    firebaseUnsub = onValue(telemetriaRef, (snapshot) => {
+      const d = snapshot.val();
+      if (!d) return;
+      telemetry.motorR             = d.v_derecha         ?? 0;
+      telemetry.motorL             = d.v_izquierda       ?? 0;
+      telemetry.v_total            = d.v_total           ?? 0;
+      telemetry.yaw                = d.teta              ?? 0;
+      telemetry.angularVel         = d.v_angular         ?? 0;
+      telemetry.posX               = d.x_pos             ?? 0;
+      telemetry.posY               = d.y_pos             ?? 0;
+      telemetry.dist_pared_der     = d.d_pared_derecha   ?? 0;
+      telemetry.dist_pared_izq     = d.d_pared_izquierda ?? 0;
+      telemetry.dist_pared_trasera = d.d_pared_trasera   ?? 0;
+      telemetry.pilas              = d.pilas             ?? 0;
+      telemetry = telemetry;
+    });
   }
-}
+
+  function stopFirebase() {
+    if (firebaseUnsub) {
+      firebaseUnsub();
+      firebaseUnsub = null;
+    }
+  }
+
+  // ============================================================
+  // SUSCRIPCIÓN MQTT
+  // ============================================================
+
+  function startMQTT() {
+    mqttStatus.set('connecting');
+    const client = connectMQTT(brokerUrl);
+
+    client.on('connect', () => {
+      mqttStatus.set('connected');
+      const T = mqttTopics.telemetria;
+      subscribeTopic(T.v_der,           v => { telemetry.motorR             = parseFloat(v) || 0; telemetry = telemetry; });
+      subscribeTopic(T.v_izq,           v => { telemetry.motorL             = parseFloat(v) || 0; telemetry = telemetry; });
+      subscribeTopic(T.v_total,         v => { telemetry.v_total            = parseFloat(v) || 0; telemetry = telemetry; });
+      subscribeTopic(T.teta,            v => { telemetry.yaw                = parseFloat(v) || 0; telemetry = telemetry; });
+      subscribeTopic(T.omega,           v => { telemetry.angularVel         = parseFloat(v) || 0; telemetry = telemetry; });
+      subscribeTopic(T.x,               v => { telemetry.posX               = parseFloat(v) || 0; telemetry = telemetry; });
+      subscribeTopic(T.y,               v => { telemetry.posY               = parseFloat(v) || 0; telemetry = telemetry; });
+      subscribeTopic(T.d_pared_der,     v => { telemetry.dist_pared_der     = parseFloat(v) || 0; telemetry = telemetry; });
+      subscribeTopic(T.d_pared_izq,     v => { telemetry.dist_pared_izq     = parseFloat(v) || 0; telemetry = telemetry; });
+      subscribeTopic(T.d_pared_trasera, v => { telemetry.dist_pared_trasera = parseFloat(v) || 0; telemetry = telemetry; });
+      subscribeTopic(T.pilas,           v => { telemetry.pilas              = parseFloat(v) || 0; telemetry = telemetry; });
+    });
+
+    client.on('error', (err) => {
+      console.error('[MQTT]', err);
+      mqttStatus.set('error');
+    });
+
+    client.on('close', () => {
+      if (storeGet(mqttStatus) !== 'disconnected') mqttStatus.set('disconnected');
+    });
+  }
+
+  function stopMQTT() {
+    mqttStatus.set('disconnected');
+    disconnectMQTT();
+  }
+
+  // ============================================================
+  // CAMBIO DE FUENTE
+  // ============================================================
+
+  const unsubDataSource = dataSource.subscribe((source) => {
+    if (source === 'firebase') {
+      stopMQTT();
+      startFirebase();
+    } else {
+      stopFirebase();
+      startMQTT();
+    }
+  });
+
+  startFirebase();
+
+  // ============================================================
+  // COMANDOS DE ESCRITURA — según la fuente activa
+  // ============================================================
+
+  /**
+   * @param {{ firebase: string, mqtt: string }} paths
+   * @param {string | number} value
+   */
+  function writeValue(paths, value) {
+    if (currentSource === 'firebase') {
+      set(ref(db, paths.firebase), value);
+    } else {
+      publishMQTT(paths.mqtt, value);
+    }
+  }
+
+  function sendControl() {
+    if (controlMode === 'Duty') {
+      writeValue({ firebase: FB.comandos.duty_izq,  mqtt: mqttTopics.comandos.duty_izq  }, Math.floor(thrustL * 2.55));
+      writeValue({ firebase: FB.comandos.duty_der,  mqtt: mqttTopics.comandos.duty_der  }, Math.floor(thrustR * 2.55));
+      writeValue({ firebase: FB.comandos.teta_ref,  mqtt: mqttTopics.comandos.teta_ref  }, Math.floor(heading));
+    } else if (controlMode === 'Vel') {
+      writeValue({ firebase: FB.comandos.teta_ref,  mqtt: mqttTopics.comandos.teta_ref  }, Math.floor(heading));
+      writeValue({ firebase: FB.comandos.v_izq_ref, mqtt: mqttTopics.comandos.v_izq_ref }, comando_v_izq);
+      writeValue({ firebase: FB.comandos.v_der_ref, mqtt: mqttTopics.comandos.v_der_ref }, comando_v_der);
+    }
+  }
+
   function syncThrustToWheels() {
     comando_v_izq = thrust;
     comando_v_der = thrust;
     sendControl();
   }
 
-  function assignMission() {   // boton de asignar mision
+  function assignMission() {
     if (!newMissionTarget.trim()) return;
     newMissionTarget = '';
   }
 
-  function emergencyStop() {   // boton de parada de emergencia
-    thrustL = 0;
-    thrustR = 0;
-    thrust  = 0;
+  function emergencyStop() {
+    thrustL       = 0;
+    thrustR       = 0;
+    thrust        = 0;
     comando_v_izq = 0;
     comando_v_der = 0;
-
     telemetry.status = 'DETENIDO';
     sendControl();
   }
 
-  // leer datos cada 0.3 segundos
-  // mientras no tenga lectura de sensores pondre esto.
-  
-// ── SUSCRIPCIÓN EN TIEMPO REAL ───────────────────────────────
-const telemetriaRef = ref(db, 'Telemetria');
+  // ============================================================
+  // GAMEPAD — Control con gatillos Xbox
+  // ============================================================
 
-const unsubscribe = onValue(telemetriaRef, (snapshot) => {
-  const d = snapshot.val();
-  if (!d) return;
+  let gamepadIndex     = -1;
+  let gamepadConnected = false;
+  /** @type {number} */
+  let gamepadLoopId;
 
-  telemetry.motorR            = (d.v_derecha  ?? 0) ;
-  telemetry.motorL            = (d.v_izquierda ?? 0) ;
-  telemetry.v_total           = d.v_total    ?? 0;
-  telemetry.yaw               = d.teta       ?? 0;
-  telemetry.angularVel        = d.v_angular  ?? 0;
-  telemetry.posX              = d.x_pos      ?? 0;
-  telemetry.posY              = d.y_pos      ?? 0;
-  telemetry.dist_pared_der    = d.d_pared_derecha  ?? 0;
-  telemetry.dist_pared_izq    = d.d_pared_izquierda ?? 0;
-  telemetry.dist_pared_trasera = d.d_pared_trasera  ?? 0;
-  telemetry.pilas             = d.pilas      ?? 0;
+  /** @param {number} trigger */
+  function mapTriggerDuty(trigger) {
+    if (trigger <= 0.9) {
+      return Math.round((trigger / 0.9) * 70);
+    } else {
+      return Math.round(70 + ((trigger - 0.9) / 0.1) * 10);
+    }
+  }
 
-  // Forzar reactividad de Svelte
-  telemetry = telemetry;
-});
+  /** @param {number} trigger */
+  function mapTriggerVel(trigger) {
+    const MAX_VEL = 0.5;
+    if (trigger <= 0.9) {
+      return (trigger / 0.9) * (MAX_VEL * 0.70);
+    } else {
+      return (MAX_VEL * 0.70) + ((trigger - 0.9) / 0.1) * (MAX_VEL * 0.10);
+    }
+  }
 
-onDestroy(() => {
-  unsubscribe();
-});
+  function gamepadLoop() {
+    const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+    const gp = gamepads[gamepadIndex];
+    if (gp) {
+      const lt = gp.buttons[6]?.value ?? 0;
+      const rt = gp.buttons[7]?.value ?? 0;
+      if (controlMode === 'Duty') {
+        const newL = mapTriggerDuty(lt);
+        const newR = mapTriggerDuty(rt);
+        if (newL !== thrustL || newR !== thrustR) {
+          thrustL = newL;
+          thrustR = newR;
+          sendControl();
+        }
+      } else if (controlMode === 'Vel') {
+        const newL = Math.round(mapTriggerVel(lt) * 100) / 100;
+        const newR = Math.round(mapTriggerVel(rt) * 100) / 100;
+        if (newL !== comando_v_izq || newR !== comando_v_der) {
+          comando_v_izq = newL;
+          comando_v_der = newR;
+          sendControl();
+        }
+      }
+    }
+    gamepadLoopId = requestAnimationFrame(gamepadLoop);
+  }
 
-  
+  /** @param {GamepadEvent} e */
+  function onGamepadConnected(e) {
+    gamepadIndex     = e.gamepad.index;
+    gamepadConnected = true;
+    console.log('Gamepad conectado:', e.gamepad.id);
+    gamepadLoop();
+  }
 
+  /** @param {GamepadEvent} e */
+  function onGamepadDisconnected(e) {
+    if (e.gamepad.index === gamepadIndex) {
+      cancelAnimationFrame(gamepadLoopId);
+      gamepadIndex     = -1;
+      gamepadConnected = false;
+      thrustL       = 0;
+      thrustR       = 0;
+      comando_v_izq = 0;
+      comando_v_der = 0;
+      sendControl();
+    }
+  }
 
+  // Solo registrar eventos en el browser, nunca en el servidor
+  if (typeof window !== 'undefined') {
+    window.addEventListener('gamepadconnected',    onGamepadConnected);
+    window.addEventListener('gamepaddisconnected', onGamepadDisconnected);
+  }
 
-  // escuchar datos reactivos
-  
+  // ============================================================
+  // CLEANUP
+  // ============================================================
 
-// // En onDestroy del componente Svelte:
-// onDestroy(() => {
-//   off(telemetryRef);  // Cancela la suscripción
-// });
-
-  
+  onDestroy(() => {
+    stopFirebase();
+    stopMQTT();
+    unsubSource();
+    unsubBroker();
+    unsubDataSource();
+    if (typeof window !== 'undefined') {
+      cancelAnimationFrame(gamepadLoopId);
+      window.removeEventListener('gamepadconnected',    onGamepadConnected);
+      window.removeEventListener('gamepaddisconnected', onGamepadDisconnected);
+    }
+  });
 </script>
 
 <div class="app">
@@ -257,6 +428,7 @@ onDestroy(() => {
         bind:controlMode
         bind:comando_v_der
         bind:comando_v_izq
+        {gamepadConnected}
         {sendControl}
         {emergencyStop}
         {syncThrustToWheels}
@@ -276,9 +448,6 @@ onDestroy(() => {
 </div>
 
 <style>
-  /* ── TOKENS DE DISEÑO ─────────────────────────────────────
-     Modifica estos valores para cambiar la paleta completa.
-     ─────────────────────────────────────────────────────── */
   :global(*) { box-sizing: border-box; margin: 0; padding: 0; }
   :global(body) {
     font-family: 'Inter', system-ui, sans-serif;
@@ -288,7 +457,6 @@ onDestroy(() => {
   }
 
   :global(:root) {
-    /* Colores principales del sistema Kinetic Labs */
     --bg:                  #11131c;
     --surface:             #11131c;
     --surface-low:         #191b24;
@@ -301,26 +469,22 @@ onDestroy(() => {
     --on-surface-variant:  #c2c6d7;
     --outline-variant:     #424655;
 
-    /* Acentos */
-    --primary:             #b0c6ff;  /* Azul eléctrico – datos de telemetría */
+    --primary:             #b0c6ff;
     --primary-container:   #558dff;
-    --secondary:           #7dffa2;  /* Verde esmeralda – estado OK */
+    --secondary:           #7dffa2;
     --secondary-container: #05e777;
-    --tertiary:            #f7be00;  /* Ámbar – advertencias */
+    --tertiary:            #f7be00;
     --tertiary-container:  #b58a00;
-    --error:               #ffb4ab;  /* Rojo – errores críticos */
+    --error:               #ffb4ab;
     --error-container:     #93000a;
 
-    /* Tipografía */
     --font-mono: 'Roboto Mono', 'Courier New', monospace;
 
-    /* Bordes */
     --radius-sm:   0.125rem;
     --radius-md:   0.375rem;
     --radius-lg:   0.75rem;
   }
 
-  /* ── LAYOUT GENERAL ──────────────────────────────────────── */
   .app {
     display: flex;
     height: 100vh;
@@ -336,10 +500,8 @@ onDestroy(() => {
     scrollbar-color: var(--surface-bright) transparent;
   }
 
-  /* ── ESTILOS COMPARTIDOS POR VISTAS ─────────────────────── */
   :global(.view) { padding: 2rem 2.5rem; }
 
-  /* Encabezado de vista */
   :global(.view-header) {
     display: flex;
     align-items: baseline;
