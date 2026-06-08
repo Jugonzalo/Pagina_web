@@ -43,6 +43,7 @@ export const mqttTopics = {
     v_total_ref: 'robot/comandos/v_total_ref',
     x_ref:       'robot/comandos/x_ref',
     y_ref:       'robot/comandos/y_ref',
+    w_ref:       'robot/comandos/w_ref',    
   },
 };
 

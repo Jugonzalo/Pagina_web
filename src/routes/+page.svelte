@@ -60,6 +60,7 @@
       teta_ref:    'Comandos/teta_ref',
       v_der_ref:   'Comandos/v_der_ref',
       v_izq_ref:   'Comandos/v_izq_ref',
+      w_ref:       'Comandos/w_ref',
       v_total_ref: 'Comandos/v_total_ref',
       x_ref:       'Comandos/x_ref',
       y_ref:       'Comandos/y_ref',
@@ -140,6 +141,7 @@
   let thrust        = 0;
   let comando_v_der = 0;
   let comando_v_izq = 0;
+  let comando_w = 0;   
   let controlMode   = 'traccion';
 
   // ============================================================
@@ -271,6 +273,7 @@
       writeValue({ firebase: FB.comandos.teta_ref,  mqtt: mqttTopics.comandos.teta_ref  }, Math.floor(heading));
       writeValue({ firebase: FB.comandos.v_izq_ref, mqtt: mqttTopics.comandos.v_izq_ref }, comando_v_izq);
       writeValue({ firebase: FB.comandos.v_der_ref, mqtt: mqttTopics.comandos.v_der_ref }, comando_v_der);
+      writeValue({ firebase: FB.comandos.w_ref, mqtt: mqttTopics.comandos.w_ref }, comando_w);
     }
   }
 
@@ -291,8 +294,23 @@
     thrust        = 0;
     comando_v_izq = 0;
     comando_v_der = 0;
+    comando_w = 0; 
     telemetry.status = 'DETENIDO';
     sendControl();
+  }
+
+  // ============================================================
+  // GRABACIÓN
+  // ============================================================
+
+  let grabando = false;
+
+  function toggleGrabar() {
+    grabando = !grabando;
+    writeValue(
+      { firebase: FB.estados.grabar, mqtt: 'Estados/estado_grabacion' },
+      grabando ? 1 : 0
+    );
   }
 
   // ============================================================
@@ -304,23 +322,35 @@
   /** @type {number} */
   let gamepadLoopId;
 
-  /** @param {number} trigger */
+  /**
+   * Mapea el valor del gatillo (0–1) a duty cycle con 3 valores discretos:
+   *   0           → 0   (sin presión)
+   *   0  < t ≤ 0.5 → 33  (1/3 máximo)
+   *   0.5 < t ≤ 0.9 → 67  (2/3 máximo)
+   *   0.9 < t ≤ 1   → 100 (máximo)
+   * @param {number} trigger
+   */
   function mapTriggerDuty(trigger) {
-    if (trigger <= 0.9) {
-      return Math.round((trigger / 0.9) * 70);
-    } else {
-      return Math.round(70 + ((trigger - 0.9) / 0.1) * 10);
-    }
+    if (trigger <= 0)    return 0;
+    if (trigger <= 0.5)  return 33;
+    if (trigger <= 0.9)  return 67;
+    return 100;
   }
 
-  /** @param {number} trigger */
+  /**
+   * Mapea el valor del gatillo (0–1) a velocidad (m/s) con 3 valores discretos:
+   *   0           → 0          (sin presión)
+   *   0  < t ≤ 0.5 → MAX_VEL/3   (~0.167 m/s)
+   *   0.5 < t ≤ 0.9 → MAX_VEL*2/3 (~0.333 m/s)
+   *   0.9 < t ≤ 1   → MAX_VEL     (0.5 m/s)
+   * @param {number} trigger
+   */
   function mapTriggerVel(trigger) {
     const MAX_VEL = 0.5;
-    if (trigger <= 0.9) {
-      return (trigger / 0.9) * (MAX_VEL * 0.70);
-    } else {
-      return (MAX_VEL * 0.70) + ((trigger - 0.9) / 0.1) * (MAX_VEL * 0.10);
-    }
+    if (trigger <= 0)    return 0;
+    if (trigger <= 0.5)  return Math.round((MAX_VEL / 3) * 100) / 100;
+    if (trigger <= 0.9)  return Math.round((MAX_VEL * 2 / 3) * 100) / 100;
+    return MAX_VEL;
   }
 
   function gamepadLoop() {
@@ -407,6 +437,8 @@
     {ROBOT_ID}
     {ACTIVE_PROTOCOL}
     {setConnectionMode}
+    {grabando}
+    onToggleGrabar={toggleGrabar}
   />
 
   <!-- ── PANEL PRINCIPAL ───────────────────────────────────── -->
@@ -428,6 +460,7 @@
         bind:controlMode
         bind:comando_v_der
         bind:comando_v_izq
+        bind:comando_w
         {gamepadConnected}
         {sendControl}
         {emergencyStop}

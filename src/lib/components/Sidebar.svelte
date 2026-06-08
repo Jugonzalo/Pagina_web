@@ -15,6 +15,10 @@
   export let ACTIVE_PROTOCOL;
   /** @type {(mode: string) => void} */
   export let setConnectionMode;
+  /** @type {boolean} */
+  export let grabando = false;
+  /** @type {() => void} */
+  export let onToggleGrabar = () => {};
 
   /** @param {string} status */
   function statusClass(status) {
@@ -177,6 +181,20 @@
         ONLINE
       </button>
     </div>
+  </div>
+
+  <!-- ── BOTÓN GRABAR ──────────────────────────────────── -->
+  <div class="rec-section">
+    <div class="conn-mode-label">GRABACIÓN</div>
+    <button
+      id="btn-grabar"
+      class="rec-btn {grabando ? 'rec-btn--on' : ''}"
+      title="{grabando ? 'Detener grabación' : 'Iniciar grabación'}"
+      on:click={onToggleGrabar}
+    >
+      <span class="rec-dot"></span>
+      {grabando ? 'REC ON' : 'REC OFF'}
+    </button>
   </div>
 
   <!-- Indicador de estado global del robot en el footer del sidebar -->
@@ -405,6 +423,52 @@
     letter-spacing: 0.05em;
     color: var(--on-surface-variant);
     font-weight: 600;
+  }
+
+  /* Sección grabar */
+  .rec-section {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid rgba(66, 70, 85, 0.3);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .rec-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.45rem 0;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--outline-variant);
+    background: transparent;
+    color: var(--on-surface-variant);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .rec-btn:hover {
+    border-color: var(--error);
+    color: var(--error);
+  }
+  .rec-btn--on {
+    background: rgba(255, 180, 171, 0.12);
+    border-color: var(--error);
+    color: var(--error);
+  }
+  .rec-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+  .rec-btn--on .rec-dot {
+    animation: pulse 0.8s infinite;
   }
 
   /* Footer del sidebar */

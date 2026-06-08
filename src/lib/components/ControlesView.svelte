@@ -23,6 +23,8 @@
   export let emergencyStop;
   /** @type {() => void} */
   export let syncThrustToWheels;
+  /** @type {number} */
+  export let comando_w;
 
 </script>
 
@@ -95,6 +97,8 @@
         />
       </div>
 
+      
+
 
 
       <!-- Slider conjunto -->
@@ -112,6 +116,7 @@
           class="control-slider"
         />
       </div>
+
     </div>
   </div>
   {/if}
@@ -182,6 +187,22 @@
           class="control-slider"
         />
       </div>
+      <div class="slider-group">
+  <label for="slider-angular-velocity" class="slider-label">VELOCIDAD ANGULAR (ω ref)</label>
+  <div class="slider-value-display {comando_w >= 0 ? 'positive' : 'negative'}">
+    {comando_w > 0 ? '+' : ''}{comando_w} rad/s
+  </div>
+  <input
+    id="slider-angular-velocity"
+    type="range"
+    min="-2"
+    max="2"
+    step="0.1"
+    bind:value={comando_w}
+    on:input={sendControl}
+    class="control-slider tertiary"
+  />
+</div>
     </div>
   </div>
   {/if}
