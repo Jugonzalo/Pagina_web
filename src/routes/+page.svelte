@@ -143,6 +143,8 @@
   let comando_v_izq = 0;
   let comando_w = 0;   
   let controlMode   = 'traccion';
+  let v_total_ref   = 0;
+  let teta_ref      = 0;
 
   // ============================================================
   // ESTADO DE CONEXIÓN
@@ -274,6 +276,9 @@
       writeValue({ firebase: FB.comandos.v_izq_ref, mqtt: mqttTopics.comandos.v_izq_ref }, comando_v_izq);
       writeValue({ firebase: FB.comandos.v_der_ref, mqtt: mqttTopics.comandos.v_der_ref }, comando_v_der);
       writeValue({ firebase: FB.comandos.w_ref, mqtt: mqttTopics.comandos.w_ref }, comando_w);
+    } else if (controlMode === 'VTeta') {
+      writeValue({ firebase: FB.comandos.v_total_ref, mqtt: mqttTopics.comandos.v_total_ref }, v_total_ref);
+      writeValue({ firebase: FB.comandos.teta_ref,    mqtt: mqttTopics.comandos.teta_ref    }, Math.floor(teta_ref));
     }
   }
 
@@ -294,7 +299,9 @@
     thrust        = 0;
     comando_v_izq = 0;
     comando_v_der = 0;
-    comando_w = 0; 
+    comando_w     = 0;
+    v_total_ref   = 0;
+    teta_ref      = 0;
     telemetry.status = 'DETENIDO';
     sendControl();
   }
@@ -353,6 +360,25 @@
     return MAX_VEL;
   }
 
+  /**
+   * Convierte la posición del stick (x, y en [-1,1]) a ángulo horario desde
+   * Norte (0°=arriba, 90°=derecha), redondeado al múltiplo de 30° más cercano.
+   * Devuelve null si el stick está dentro de la zona muerta.
+   * @param {number} x  - axes[0]
+   * @param {number} y  - axes[1]
+   * @returns {number | null}
+   */
+  function mapStickAngle(x, y) {
+    const DEADZONE = 0.25;          // radio mínimo para considerar input
+    const magnitude = Math.sqrt(x * x + y * y);
+    if (magnitude < DEADZONE) return null;
+    // atan2(x, -y) → ángulo horario desde Norte
+    let deg = Math.atan2(x, -y) * (180 / Math.PI);
+    if (deg < 0) deg += 360;
+    // Redondear al múltiplo de 30° más cercano
+    return Math.round(deg / 30) * 30 % 360;
+  }
+
   function gamepadLoop() {
     const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
     const gp = gamepads[gamepadIndex];
@@ -373,6 +399,24 @@
         if (newL !== comando_v_izq || newR !== comando_v_der) {
           comando_v_izq = newL;
           comando_v_der = newR;
+          sendControl();
+        }
+      } else if (controlMode === 'VTeta') {
+        // RT → velocidad positiva / LT → velocidad negativa
+        const posV =  Math.round(mapTriggerVel(rt) * 100) / 100;
+        const negV = -Math.round(mapTriggerVel(lt) * 100) / 100;
+        const newV = Math.round((posV + negV) * 100) / 100;
+        if (newV !== v_total_ref) {
+          v_total_ref = newV;
+          sendControl();
+        }
+        // Stick izquierdo → ángulo θ ref (pasos de 30°)
+        const lx = gp.axes[0] ?? 0;
+        const ly = gp.axes[1] ?? 0;
+        const newAngle = mapStickAngle(lx, ly);
+        if (newAngle !== null && newAngle !== teta_ref) {
+          teta_ref = newAngle;
+          heading  = newAngle;
           sendControl();
         }
       }
@@ -398,6 +442,7 @@
       thrustR       = 0;
       comando_v_izq = 0;
       comando_v_der = 0;
+      v_total_ref   = 0;
       sendControl();
     }
   }
@@ -461,6 +506,8 @@
         bind:comando_v_der
         bind:comando_v_izq
         bind:comando_w
+        bind:v_total_ref
+        bind:teta_ref
         {gamepadConnected}
         {sendControl}
         {emergencyStop}
