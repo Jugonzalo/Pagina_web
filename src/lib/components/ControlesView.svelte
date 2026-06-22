@@ -217,13 +217,13 @@
       <!-- Slider de rumbo -->
        <div class="slider-group">
         <label for="slider-left" class="slider-label">RUEDA IZQUIERDA</label>
-        <div class="slider-value-display {comando_v_izq >= 0 ? 'positive' : 'negative'}">{comando_v_izq > 0 ? '+' : ''}{comando_v_izq}m/s</div>
+        <div class="slider-value-display {comando_v_izq >= 0 ? 'positive' : 'negative'}">{comando_v_izq > 0 ? '+' : ''}{comando_v_izq} cm/s</div>
         <input
           id="slider-left"
           type="range"
-          min="-0.5"
-          max="0.5"
-          step="0.05"
+          min="-100"
+          max="100"
+          step="5"
           bind:value={comando_v_izq}
           on:input={sendControl}
           class="control-slider"
@@ -232,13 +232,13 @@
 
       <div class="slider-group">
         <label for="slider-der_velocidad" class="slider-label">RUEDA DERECHA</label>
-        <div class="slider-value-display {comando_v_der >= 0 ? 'positive' : 'negative'}">{comando_v_der > 0 ? '+' : ''}{comando_v_der}m/s</div>
+        <div class="slider-value-display {comando_v_der >= 0 ? 'positive' : 'negative'}">{comando_v_der > 0 ? '+' : ''}{comando_v_der} cm/s</div>
         <input
           id="slider-left"
           type="range"
-          min="-0.5"
-          max="0.5"
-          step="0.05"
+          min="-100"
+          max="100"
+          step="5"
           bind:value={comando_v_der}
           on:input={sendControl}
           class="control-slider"
@@ -266,9 +266,9 @@
         <input
           id="slider-thrust"
           type="range"
-          min="-0.5"
-          max="0.5  "
-          step="0.05"
+          min="-100"
+          max="100"
+          step="5"
           bind:value={thrust}
           on:input={syncThrustToWheels}
           class="control-slider"
@@ -304,7 +304,7 @@
       <div class="vteta-row-header">
         <span class="slider-label">VELOCIDAD TOTAL — V<sub>ref</sub></span>
         <span class="vteta-val {v_total_ref >= 0 ? 'positive' : 'negative'}">
-          {v_total_ref > 0 ? '+' : ''}{v_total_ref.toFixed(2)} <span class="vteta-unit">m/s</span>
+          {v_total_ref > 0 ? '+' : ''}{v_total_ref.toFixed(0)} <span class="vteta-unit">cm/s</span>
         </span>
       </div>
 
@@ -314,8 +314,8 @@
           <div
             class="vel-bar-fill {v_total_ref >= 0 ? 'fill-pos' : 'fill-neg'}"
             style="
-              width:  {Math.abs(v_total_ref) / 0.5 * 50}%;
-              left:   {v_total_ref >= 0 ? '50%' : (50 - Math.abs(v_total_ref) / 0.5 * 50) + '%'};
+              width:  {Math.abs(v_total_ref) / 70 * 50}%;
+              left:   {v_total_ref >= 0 ? '50%' : (50 - Math.abs(v_total_ref) / 70 * 50) + '%'};
             "
           ></div>
           <div class="vel-bar-center"></div>
@@ -325,15 +325,15 @@
       <input
         id="slider-v-total-ref"
         type="range"
-        min="-0.5"
-        max="0.5"
-        step="0.01"
+        min="-70"
+        max="70"
+        step="1"
         bind:value={v_total_ref}
         on:input={sendVTetaControl}
         class="control-slider vteta-slider"
       />
       <div class="speed-ticks">
-        <span>-0.5 m/s</span><span>0</span><span>+0.5 m/s</span>
+        <span>-70 cm/s</span><span>0</span><span>+70 cm/s</span>
       </div>
     </div>
 

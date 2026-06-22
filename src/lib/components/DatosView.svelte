@@ -25,29 +25,29 @@
   // ============================================================
 
   // --- Velocímetros de ruedas (ECharts) ---
-  const GAUGE_WHEEL_MIN      = -1;    // Valor mínimo de los velocímetros de rueda
-  const GAUGE_WHEEL_MAX      =  1;    // Valor máximo de los velocímetros de rueda
+  const GAUGE_WHEEL_MIN      = -120;  // Valor mínimo de los velocímetros de rueda (cm/s)
+  const GAUGE_WHEEL_MAX      =  120;  // Valor máximo de los velocímetros de rueda (cm/s)
 
   // --- Velocímetro velocidad angular (ECharts) ---
-  const GAUGE_OMEGA_MIN      = -2;    // Valor mínimo del velocímetro de velocidad angular
-  const GAUGE_OMEGA_MAX      =  2;    // Valor máximo del velocímetro de velocidad angular
+  const GAUGE_OMEGA_MIN      = -2;    // Valor mínimo del velocímetro de velocidad angular (rad/s)
+  const GAUGE_OMEGA_MAX      =  2;    // Valor máximo del velocímetro de velocidad angular (rad/s)
 
   // --- Velocímetro velocidad total (ECharts) ---
-  const GAUGE_VTOTAL_MIN     =  0;    // Valor mínimo del velocímetro de velocidad total
-  const GAUGE_VTOTAL_MAX     =  1;    // Valor máximo del velocímetro de velocidad total
+  const GAUGE_VTOTAL_MIN     =  0;    // Valor mínimo del velocímetro de velocidad total (cm/s)
+  const GAUGE_VTOTAL_MAX     =  70;   // Valor máximo del velocímetro de velocidad total (cm/s)
 
   // --- Gráfico scatter de coordenadas (Chart.js) ---
-  const SCATTER_X_MIN        = -5;    // Eje X mínimo del scatter
-  const SCATTER_X_MAX        =  5;    // Eje X máximo del scatter
-  const SCATTER_Y_MIN        = -5;    // Eje Y mínimo del scatter
-  const SCATTER_Y_MAX        =  5;    // Eje Y máximo del scatter
+  const SCATTER_X_MIN        = -10;   // Eje X mínimo del scatter (cm)
+  const SCATTER_X_MAX        =  160;  // Eje X máximo del scatter (cm)
+  const SCATTER_Y_MIN        = -10;   // Eje Y mínimo del scatter (cm)
+  const SCATTER_Y_MAX        =  130;  // Eje Y máximo del scatter (cm)
   const SCATTER_MAX_POINTS   = 200;   // Máximo de puntos históricos en el scatter
 
   // --- Gráficos de velocidad vs tiempo (Chart.js line) ---
-  const LINE_SPEED_Y_MIN     = -1;    // Eje Y mínimo en gráficos de velocidad
-  const LINE_SPEED_Y_MAX     =  1;    // Eje Y máximo en gráficos de velocidad
-  const LINE_VTOTAL_Y_MIN    =  0;    // Eje Y mínimo en gráfico de velocidad total
-  const LINE_VTOTAL_Y_MAX    =  1;    // Eje Y máximo en gráfico de velocidad total
+  const LINE_SPEED_Y_MIN     = -120;  // Eje Y mínimo en gráficos de velocidad (cm/s)
+  const LINE_SPEED_Y_MAX     =  120;  // Eje Y máximo en gráficos de velocidad (cm/s)
+  const LINE_VTOTAL_Y_MIN    =  0;    // Eje Y mínimo en gráfico de velocidad total (cm/s)
+  const LINE_VTOTAL_Y_MAX    =  70;   // Eje Y máximo en gráfico de velocidad total (cm/s)
   const LINE_MAX_POINTS      = 60;    // Número máximo de puntos en línea de tiempo
   const LINE_TIME_INTERVAL_MS = 500;  // Intervalo de muestreo en ms para los gráficos de línea
 
@@ -244,7 +244,7 @@
           },
           tooltip: {
             callbacks: {
-              label: (ctx) => `(${ctx.parsed.x.toFixed(2)}, ${ctx.parsed.y.toFixed(2)}) m`
+              label: (ctx) => `(${ctx.parsed.x.toFixed(1)}, ${ctx.parsed.y.toFixed(1)}) cm`
             }
           }
         },
@@ -252,14 +252,14 @@
           x: {
             min: SCATTER_X_MIN,
             max: SCATTER_X_MAX,
-            title: { display: true, text: 'X (m)', color: '#c2c6d7', font: { size: 10 } },
+            title: { display: true, text: 'X (cm)', color: '#c2c6d7', font: { size: 10 } },
             grid:   { color: 'rgba(66,70,85,0.4)' },
             ticks:  { color: '#c2c6d7', font: { size: 9 } }
           },
           y: {
             min: SCATTER_Y_MIN,
             max: SCATTER_Y_MAX,
-            title: { display: true, text: 'Y (m)', color: '#c2c6d7', font: { size: 10 } },
+            title: { display: true, text: 'Y (cm)', color: '#c2c6d7', font: { size: 10 } },
             grid:   { color: 'rgba(66,70,85,0.4)' },
             ticks:  { color: '#c2c6d7', font: { size: 9 } }
           }
@@ -328,7 +328,7 @@
   function initLineCharts() {
     chartjsLineL = createLineChart(
       canvasLineL,
-      'Velocidad Motor L (m/s)',
+      'Velocidad Motor L (cm/s)',
       '#b0c6ff',   // Color azul-primario
       LINE_SPEED_Y_MIN,
       LINE_SPEED_Y_MAX
@@ -336,7 +336,7 @@
 
     chartjsLineR = createLineChart(
       canvasLineR,
-      'Velocidad Motor R (m/s)',
+      'Velocidad Motor R (cm/s)',
       '#558dff',   // Color azul más intenso
       LINE_SPEED_Y_MIN,
       LINE_SPEED_Y_MAX
@@ -344,7 +344,7 @@
 
     chartjsLineVtotal = createLineChart(
       canvasLineVtotal,
-      'Velocidad Total (m/s)',
+      'Velocidad Total (cm/s)',
       '#7dffa2',   // Color verde-secundario
       LINE_VTOTAL_Y_MIN,
       LINE_VTOTAL_Y_MAX
@@ -486,18 +486,18 @@
 
     <!-- Gauge Motor Izquierdo -->
     <div class="metric-card gauge-card">
-      <div class="metric-label">MOTOR IZQUIERDO (m/s)</div>
+      <div class="metric-label">MOTOR IZQUIERDO (cm/s)</div>
       <!-- Contenedor ECharts -->
       <div bind:this={chartContainerL} class="gauge-container"></div>
       <!-- Valor numérico exacto debajo del gauge -->
-      <div class="gauge-value">{telemetry.motorL.toFixed(3)} <span class="gauge-unit">m/s</span></div>
+      <div class="gauge-value">{telemetry.motorL.toFixed(1)} <span class="gauge-unit">cm/s</span></div>
     </div>
 
     <!-- Gauge Motor Derecho -->
     <div class="metric-card gauge-card">
-      <div class="metric-label">MOTOR DERECHO (m/s)</div>
+      <div class="metric-label">MOTOR DERECHO (cm/s)</div>
       <div bind:this={chartContainerR} class="gauge-container"></div>
-      <div class="gauge-value">{telemetry.motorR.toFixed(3)} <span class="gauge-unit">m/s</span></div>
+      <div class="gauge-value">{telemetry.motorR.toFixed(1)} <span class="gauge-unit">cm/s</span></div>
     </div>
 
     <!-- Gauge Velocidad Angular -->
@@ -509,9 +509,9 @@
 
     <!-- Gauge Velocidad Total -->
     <div class="metric-card gauge-card">
-      <div class="metric-label">VELOCIDAD TOTAL (m/s)</div>
+      <div class="metric-label">VELOCIDAD TOTAL (cm/s)</div>
       <div bind:this={chartContainerVtotal} class="gauge-container"></div>
-      <div class="gauge-value">{telemetry.v_total.toFixed(3)} <span class="gauge-unit">m/s</span></div>
+      <div class="gauge-value">{telemetry.v_total.toFixed(1)} <span class="gauge-unit">cm/s</span></div>
     </div>
 
   </div><!-- /gauges-row -->
@@ -685,14 +685,14 @@
     <div class="coords-row">
       <div class="coord-block">
         <span class="coord-axis">X</span>
-        <span class="metric-value primary mono">{telemetry.posX.toFixed(3)}</span>
-        <span class="coord-unit">m</span>
+        <span class="metric-value primary mono">{telemetry.posX.toFixed(1)}</span>
+        <span class="coord-unit">cm</span>
       </div>
       <div class="coord-separator">—</div>
       <div class="coord-block">
         <span class="coord-axis">Y</span>
-        <span class="metric-value primary mono">{telemetry.posY.toFixed(3)}</span>
-        <span class="coord-unit">m</span>
+        <span class="metric-value primary mono">{telemetry.posY.toFixed(1)}</span>
+        <span class="coord-unit">cm</span>
       </div>
     </div>
 

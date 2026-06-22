@@ -11,7 +11,7 @@ import { writable } from 'svelte/store';
  * Fuente de datos activa: 'firebase' | 'mqtt'
  * @type {import('svelte/store').Writable<'firebase' | 'mqtt'>}
  */
-export const dataSource = writable('firebase');
+export const dataSource = writable('mqtt');
 
 /**
  * URL del broker MQTT — usa automáticamente el host que sirve la página,

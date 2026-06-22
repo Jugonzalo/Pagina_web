@@ -315,7 +315,7 @@
   function toggleGrabar() {
     grabando = !grabando;
     writeValue(
-      { firebase: FB.estados.grabar, mqtt: 'Estados/estado_grabacion' },
+      { firebase: FB.estados.grabar, mqtt: 'robot/estados/grabar' },
       grabando ? 1 : 0
     );
   }
@@ -345,18 +345,34 @@
   }
 
   /**
-   * Mapea el valor del gatillo (0–1) a velocidad (m/s) con 3 valores discretos:
+   * Mapea el valor del gatillo (0–1) a velocidad (cm/s) con 3 valores discretos:
    *   0           → 0          (sin presión)
-   *   0  < t ≤ 0.5 → MAX_VEL/3   (~0.167 m/s)
-   *   0.5 < t ≤ 0.9 → MAX_VEL*2/3 (~0.333 m/s)
-   *   0.9 < t ≤ 1   → MAX_VEL     (0.5 m/s)
+   *   0  < t ≤ 0.5 → MAX_VEL/3   (~33 cm/s)
+   *   0.5 < t ≤ 0.9 → MAX_VEL*2/3 (~67 cm/s)
+   *   0.9 < t ≤ 1   → MAX_VEL     (100 cm/s)
    * @param {number} trigger
    */
   function mapTriggerVel(trigger) {
-    const MAX_VEL = 0.5;
+    const MAX_VEL = 100;
     if (trigger <= 0)    return 0;
-    if (trigger <= 0.5)  return Math.round((MAX_VEL / 3) * 100) / 100;
-    if (trigger <= 0.9)  return Math.round((MAX_VEL * 2 / 3) * 100) / 100;
+    if (trigger <= 0.5)  return Math.round(MAX_VEL / 3);
+    if (trigger <= 0.9)  return Math.round(MAX_VEL * 2 / 3);
+    return MAX_VEL;
+  }
+
+  /**
+   * Mapea el valor del gatillo (0–1) a velocidad total (cm/s) con 3 valores discretos:
+   *   0           → 0          (sin presión)
+   *   0  < t ≤ 0.5 → MAX_VEL/3   (~23 cm/s)
+   *   0.5 < t ≤ 0.9 → MAX_VEL*2/3 (~47 cm/s)
+   *   0.9 < t ≤ 1   → MAX_VEL     (70 cm/s)
+   * @param {number} trigger
+   */
+  function mapTriggerVTotal(trigger) {
+    const MAX_VEL = 70;
+    if (trigger <= 0)    return 0;
+    if (trigger <= 0.5)  return Math.round(MAX_VEL / 3);
+    if (trigger <= 0.9)  return Math.round(MAX_VEL * 2 / 3);
     return MAX_VEL;
   }
 
@@ -394,8 +410,8 @@
           sendControl();
         }
       } else if (controlMode === 'Vel') {
-        const newL = Math.round(mapTriggerVel(lt) * 100) / 100;
-        const newR = Math.round(mapTriggerVel(rt) * 100) / 100;
+        const newL = mapTriggerVel(lt);
+        const newR = mapTriggerVel(rt);
         if (newL !== comando_v_izq || newR !== comando_v_der) {
           comando_v_izq = newL;
           comando_v_der = newR;
@@ -403,9 +419,9 @@
         }
       } else if (controlMode === 'VTeta') {
         // RT → velocidad positiva / LT → velocidad negativa
-        const posV =  Math.round(mapTriggerVel(rt) * 100) / 100;
-        const negV = -Math.round(mapTriggerVel(lt) * 100) / 100;
-        const newV = Math.round((posV + negV) * 100) / 100;
+        const posV =  mapTriggerVTotal(rt);
+        const negV = -mapTriggerVTotal(lt);
+        const newV = posV + negV;
         if (newV !== v_total_ref) {
           v_total_ref = newV;
           sendControl();
@@ -521,6 +537,7 @@
         bind:newMissionTarget
         bind:newMissionPriority
         {assignMission}
+        {telemetry}
       />
     {/if}
   </main>

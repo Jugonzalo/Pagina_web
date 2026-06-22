@@ -1,0 +1,1 @@
+CreateObject("Wscript.Shell").Run "cmd /c cd ""D:\monitoreo web\monitoreo_yalent"" && npm run dev", 0, False

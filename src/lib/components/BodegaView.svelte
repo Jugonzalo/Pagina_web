@@ -11,6 +11,150 @@
   export let newMissionPriority;
   /** @type {() => void} */
   export let assignMission;
+  /** @type {any} */
+  export let telemetry = { posX: 0, posY: 0 };
+
+  // Define nodes in the maze
+  const nodes = [
+    // Row 4 (y = 120 cm)
+    { label: "04", x: 0, y: 120, col: 0, row: 4, id: "ID 8", idX: 0, idY: -25, anchor: "middle" },
+    { label: "14", x: 30, y: 120, col: 1, row: 4, id: null },
+    { label: "24", x: 60, y: 120, col: 2, row: 4, id: "ID 9", idX: 0, idY: -25, anchor: "middle" },
+    { label: "44", x: 120, y: 120, col: 4, row: 4, id: "ID 12", idX: 0, idY: -25, anchor: "middle" },
+    { label: "54", x: 150, y: 120, col: 5, row: 4, id: "ID 13", idX: 0, idY: -25, anchor: "middle" },
+
+    // Row 3 (y = 90 cm)
+    { label: "03", x: 0, y: 90, col: 0, row: 3, id: "ID 7", idX: 0, idY: -25, anchor: "middle" },
+    { label: "13", x: 30, y: 90, col: 1, row: 3, id: "ID 6", idX: 0, idY: -25, anchor: "middle" },
+    { label: "23", x: 60, y: 90, col: 2, row: 3, id: "ID 10", idX: -25, idY: 20, anchor: "end" },
+    { label: "33", x: 90, y: 90, col: 3, row: 3, id: null },
+    { label: "43", x: 120, y: 90, col: 4, row: 3, id: "ID 11", idX: 25, idY: 20, anchor: "start" },
+    { label: "53", x: 150, y: 90, col: 5, row: 3, id: null },
+
+    // Row 2 (y = 60 cm)
+    { label: "02", x: 0, y: 60, col: 0, row: 2, id: "ID 0", idX: 0, idY: -25, anchor: "middle" },
+    { label: "12", x: 30, y: 60, col: 1, row: 2, id: null },
+    { label: "22", x: 60, y: 60, col: 2, row: 2, id: "ID 3", idX: -22, idY: -20, anchor: "end" },
+    { label: "32", x: 90, y: 60, col: 3, row: 2, id: "ID 2", idX: 22, idY: -20, anchor: "start" },
+    { label: "42", x: 120, y: 60, col: 4, row: 2, id: "ID 16", idX: 22, idY: -20, anchor: "start" },
+    { label: "52", x: 150, y: 60, col: 5, row: 2, id: null },
+
+    // Row 1 (y = 30 cm)
+    { label: "01", x: 0, y: 30, col: 0, row: 1, id: null },
+    { label: "11", x: 30, y: 30, col: 1, row: 1, id: "ID 5", idX: -22, idY: 20, anchor: "end" },
+    { label: "21", x: 60, y: 30, col: 2, row: 1, id: "ID 4", idX: 22, idY: 20, anchor: "start" },
+    { label: "31", x: 90, y: 30, col: 3, row: 1, id: null },
+    { label: "41", x: 120, y: 30, col: 4, row: 1, id: null },
+    { label: "51", x: 150, y: 30, col: 5, row: 1, id: null },
+
+    // Row 0 (y = 0 cm)
+    { label: "00", x: 0, y: 0, col: 0, row: 0, id: null },
+    { label: "10", x: 30, y: 0, col: 1, row: 0, id: null },
+    { label: "20", x: 60, y: 0, col: 2, row: 0, id: null },
+    { label: "30", x: 90, y: 0, col: 3, row: 0, id: "ID 1", idX: 0, idY: -25, anchor: "middle" },
+    { label: "40", x: 120, y: 0, col: 4, row: 0, id: "ID 15", idX: 22, idY: -20, anchor: "start" },
+    { label: "50", x: 150, y: 0, col: 5, row: 0, id: "ID 14", idX: 22, idY: -20, anchor: "start" },
+  ];
+
+  // Define edges with their style (thick or thin)
+  const edges = [
+    // Horizontal edges
+    { from: "00", to: "10", type: "thick" },
+    { from: "10", to: "20", type: "thick" },
+    { from: "20", to: "30", type: "thick" },
+    { from: "40", to: "50", type: "thin" },
+    { from: "11", to: "21", type: "thick" },
+    { from: "22", to: "32", type: "thick" },
+    { from: "03", to: "13", type: "thick" },
+    { from: "23", to: "33", type: "thick" },
+    { from: "33", to: "43", type: "thick" },
+    { from: "04", to: "14", type: "thick" },
+    { from: "14", to: "24", type: "thick" },
+    { from: "44", to: "54", type: "thick" },
+
+    // Vertical edges
+    { from: "00", to: "01", type: "thick" },
+    { from: "01", to: "02", type: "thick" },
+    { from: "03", to: "04", type: "thick" },
+    { from: "11", to: "12", type: "thick" },
+    { from: "12", to: "13", type: "thick" },
+    { from: "21", to: "22", type: "thick" },
+    { from: "23", to: "24", type: "thick" },
+    { from: "30", to: "31", type: "thick" },
+    { from: "31", to: "32", type: "thick" },
+    { from: "40", to: "41", type: "thin" },
+    { from: "41", to: "42", type: "thin" },
+    { from: "43", to: "44", type: "thick" },
+    { from: "51", to: "52", type: "thick" },
+    { from: "52", to: "53", type: "thick" },
+    { from: "53", to: "54", type: "thick" },
+  ];
+
+  // Map node col/row to SVG canvas coordinates
+  /**
+   * @param {{col: number, row: number}} node
+   */
+  function getSvgCoords(node) {
+    const startX = 80;
+    const startY = 430;
+    const stepX = 90;
+    const stepY = 90;
+    return {
+      cx: startX + node.col * stepX,
+      cy: startY - node.row * stepY
+    };
+  }
+
+  // Pre-calculate SVG coordinates for all nodes
+  const svgNodes = nodes.map(node => {
+    const coords = getSvgCoords(node);
+    return {
+      ...node,
+      cx: coords.cx,
+      cy: coords.cy
+    };
+  });
+
+  // Find node by label helper
+  /**
+   * @param {string} label
+   */
+  function findSvgNode(label) {
+    return svgNodes.find(n => n.label === label);
+  }
+
+  // Find closest node to robot x, y coordinates
+  /**
+   * @param {number} x
+   * @param {number} y
+   */
+  function getRobotNode(x, y) {
+    if (x === undefined || y === undefined) return null;
+    const rx = x;
+    const ry = y;
+
+    let minDistance = Infinity;
+    let closestNode = null;
+
+    for (const node of nodes) {
+      const dist = Math.hypot(node.x - rx, node.y - ry);
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestNode = node;
+      }
+    }
+    
+    // Map closestNode to svgNode to get cx, cy
+    if (closestNode) {
+      return findSvgNode(closestNode.label);
+    }
+    return null;
+  }
+
+  // Reactive value for the robot's current node
+  $: robotNode = (telemetry && telemetry.posX !== undefined && telemetry.posY !== undefined)
+    ? getRobotNode(telemetry.posX, telemetry.posY)
+    : findSvgNode("00") || null;
 </script>
 
 <section class="view" id="view-bodega">
@@ -27,31 +171,135 @@
 
       <!-- Mapa esquemático de la bodega -->
       <div class="map-card">
-        <div class="card-title">MAPA ESQUEMÁTICO</div>
-        <div class="warehouse-map">
-          <!-- Cuadrícula de celdas (6 columnas × 4 filas) -->
-          {#each Array(4) as _, row}
-            {#each Array(6) as _, col}
-              <div
-                class="map-cell
-                  {robotMapPos.col === col && robotMapPos.row === row ? 'map-cell--robot' : ''}
-                  {(col === 1 || col === 4) ? 'map-cell--shelf' : ''}
-                "
-              >
-                {#if robotMapPos.col === col && robotMapPos.row === row}
-                  <!-- Icono del robot en el mapa -->
-                  <span class="robot-marker">◈</span>
-                {:else if (col === 1 || col === 4)}
-                  <span class="shelf-marker">▪</span>
-                {/if}
-              </div>
+        <div class="card-title">MAPA DE LA BODEGA (PLANIFICADOR A*)</div>
+        <div class="warehouse-map-container">
+          <svg viewBox="0 0 620 500" class="maze-svg" width="100%" height="100%">
+            <!-- Grilla / Papel Milimetrado de Fondo -->
+            <defs>
+              <pattern id="grid-pattern" width="30" height="30" patternUnits="userSpaceOnUse">
+                <path d="M 30 0 L 0 0 0 30" fill="none" stroke="rgba(176, 198, 255, 0.05)" stroke-width="0.5" />
+              </pattern>
+              <!-- Filtro de resplandor (glow) para el camino y robot -->
+              <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="4" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+              <filter id="red-glow" x="-25%" y="-25%" width="150%" height="150%">
+                <feGaussianBlur stdDeviation="6" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+
+            <!-- Fondo de grilla -->
+            <rect width="620" height="500" fill="var(--surface-low)" rx="8" />
+            <rect width="620" height="500" fill="url(#grid-pattern)" rx="8" />
+
+            <!-- Ejes y grilla principal -->
+            <!-- Líneas de eje Y (horizontales) -->
+            {#each [0, 1, 2, 3, 4] as rowIdx}
+              {@const y = 430 - rowIdx * 90}
+              <line x1="80" y1={y} x2="530" y2={y} stroke="rgba(176, 198, 255, 0.15)" stroke-width="1" />
+              <!-- Etiqueta Y (distancia) -->
+              <text x="45" y={y + 4} class="axis-label" text-anchor="end">{rowIdx * 30} cm</text>
             {/each}
-          {/each}
+
+            <!-- Líneas de eje X (verticales) -->
+            {#each [0, 1, 2, 3, 4, 5] as colIdx}
+              {@const x = 80 + colIdx * 90}
+              <line x1={x} y1="70" x2={x} y2="430" stroke="rgba(176, 198, 255, 0.15)" stroke-width="1" />
+              <!-- Etiqueta X (distancia) -->
+              <text x={x} y="455" class="axis-label" text-anchor="middle">{colIdx * 30} cm</text>
+            {/each}
+
+            <!-- Etiquetas de Ejes -->
+            <text x="80" y="485" class="axis-title-label" text-anchor="middle">Eje X</text>
+            <text x="45" y="40" class="axis-title-label" text-anchor="end">Eje Y</text>
+
+            <!-- Título del Planificador -->
+            <text x="305" y="35" class="planner-title-label" text-anchor="middle">Planificador A*</text>
+
+            <!-- Dibujar Conexiones (Aristas) -->
+            {#each edges as edge}
+              {@const fromNode = findSvgNode(edge.from)}
+              {@const toNode = findSvgNode(edge.to)}
+              {#if fromNode && toNode}
+                <line
+                  x1={fromNode.cx}
+                  y1={fromNode.cy}
+                  x2={toNode.cx}
+                  y2={toNode.cy}
+                  class="map-edge map-edge--{edge.type}"
+                />
+              {/if}
+            {/each}
+
+            <!-- Dibujar Nodos -->
+            {#each svgNodes as node}
+              <!-- Círculo del nodo -->
+              <circle
+                cx={node.cx}
+                cy={node.cy}
+                r="16"
+                class="map-node-circle {robotNode?.label === node.label ? 'map-node-circle--robot' : ''}"
+              />
+              <!-- Texto dentro del nodo (número de celda, ej: "04") -->
+              <text
+                x={node.cx}
+                y={node.cy + 4}
+                class="map-node-text"
+                text-anchor="middle"
+              >
+                {node.label}
+              </text>
+
+              <!-- Dibujar ID si corresponde -->
+              {#if node.id}
+                <text
+                  x={node.cx + (node.idX ?? 0)}
+                  y={node.cy + (node.idY ?? 0)}
+                  class="map-node-id"
+                  text-anchor={node.anchor ?? 'middle'}
+                >
+                  {node.id}
+                </text>
+              {/if}
+            {/each}
+
+            <!-- Indicador Rojo de Posición del Robot -->
+            {#if robotNode}
+              <!-- Halo pulsante de fondo -->
+              <circle
+                cx={robotNode.cx}
+                cy={robotNode.cy}
+                r="22"
+                fill="rgba(255, 69, 58, 0.4)"
+                class="robot-pulsing-halo"
+                filter="url(#red-glow)"
+              />
+              <!-- Círculo rojo principal -->
+              <circle
+                cx={robotNode.cx}
+                cy={robotNode.cy}
+                r="8"
+                fill="#ff453a"
+                stroke="#ffffff"
+                stroke-width="2.5"
+                class="robot-active-marker"
+              />
+            {/if}
+          </svg>
         </div>
         <!-- Leyenda del mapa -->
         <div class="map-legend">
-          <span class="legend-item"><span class="robot-marker-sm">◈</span> Robot</span>
-          <span class="legend-item"><span class="shelf-marker-sm">▪</span> Estante</span>
+          <span class="legend-item"><span class="robot-marker-sm" style="color: #ff453a;">●</span> Robot</span>
+          <span class="legend-item"><span class="node-marker-sm">○</span> Nodos</span>
+          <span class="legend-item"><span class="edge-thick-marker-sm">━</span> Principal</span>
+          <span class="legend-item"><span class="edge-thin-marker-sm">╌</span> Secundario</span>
+          <span class="legend-item" style="margin-left: auto;">
+            Telemetría: <span style="color: var(--secondary); font-family: var(--font-mono); font-weight: bold;">
+              ({telemetry?.posX?.toFixed(1) ?? '0.0'}, {telemetry?.posY?.toFixed(1) ?? '0.0'}) cm
+            </span>
+          </span>
         </div>
       </div>
 
@@ -161,41 +409,138 @@
     margin-bottom: 1rem;
   }
 
-  /* Mapa de bodega */
-  .warehouse-map {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 4px;
+  /* Mapa de bodega (SVG) */
+  .warehouse-map-container {
     background: var(--surface-low);
-    padding: 0.75rem;
     border-radius: var(--radius-sm);
-  }
-  .map-cell {
-    aspect-ratio: 1;
-    border-radius: 2px;
-    background: var(--surface-high);
+    padding: 0.5rem;
+    border: 1px solid rgba(176, 198, 255, 0.05);
     display: flex;
-    align-items: center;
     justify-content: center;
-    font-size: 0.8rem;
-    transition: background 0.3s;
+    align-items: center;
+    overflow: hidden;
   }
-  .map-cell--robot { background: rgba(176, 198, 255, 0.15); }
-  .map-cell--shelf { background: var(--surface-bright); }
-  .robot-marker { color: var(--primary); font-size: 1rem; }
-  .shelf-marker  { color: var(--on-surface-variant); font-size: 0.5rem; }
-
+  .maze-svg {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+  
+  /* Estilos de texto SVG */
+  .axis-label {
+    fill: var(--on-surface-variant);
+    font-size: 10px;
+    font-family: inherit;
+    font-weight: 500;
+    opacity: 0.85;
+  }
+  .axis-title-label {
+    fill: var(--on-surface-variant);
+    font-size: 11px;
+    font-family: inherit;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+  .planner-title-label {
+    fill: var(--on-surface);
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+  
+  /* Estilos de aristas y nodos */
+  .map-edge {
+    stroke-linecap: round;
+  }
+  .map-edge--thick {
+    stroke: #2e78d6;
+    stroke-width: 6px;
+  }
+  .map-edge--thin {
+    stroke: var(--on-surface-variant);
+    stroke-width: 1.5px;
+    stroke-dasharray: 4 4;
+    opacity: 0.5;
+  }
+  
+  .map-node-circle {
+    fill: #1a2238;
+    stroke: #2e78d6;
+    stroke-width: 2.5px;
+    transition: fill 0.3s, stroke 0.3s;
+  }
+  .map-node-circle--robot {
+    stroke: #ff453a;
+  }
+  .map-node-text {
+    fill: #ffffff;
+    font-size: 11px;
+    font-family: inherit;
+    font-weight: 700;
+  }
+  .map-node-id {
+    fill: var(--on-surface-variant);
+    font-size: 9px;
+    font-family: inherit;
+    font-weight: 600;
+    opacity: 0.9;
+  }
+  
+  /* Animación del robot */
+  .robot-pulsing-halo {
+    animation: pulse-halo 2.5s infinite ease-in-out;
+  }
+  .robot-active-marker {
+    filter: drop-shadow(0 0 5px rgba(255, 69, 58, 0.7));
+  }
+  
+  @keyframes pulse-halo {
+    0% {
+      r: 8;
+      opacity: 0.85;
+    }
+    70% {
+      r: 25;
+      opacity: 0;
+    }
+    100% {
+      r: 25;
+      opacity: 0;
+    }
+  }
+  
+  /* Leyenda */
   .map-legend {
     display: flex;
-    gap: 1.25rem;
+    flex-wrap: wrap;
+    gap: 1rem;
     margin-top: 0.75rem;
-    font-size: 0.6rem;
+    font-size: 0.65rem;
     color: var(--on-surface-variant);
     letter-spacing: 0.04em;
+    align-items: center;
   }
-  .legend-item { display: flex; align-items: center; gap: 0.35rem; }
-  .robot-marker-sm { color: var(--primary); }
-  .shelf-marker-sm  { color: var(--on-surface-variant); }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .node-marker-sm {
+    color: #2e78d6;
+    font-size: 1rem;
+    line-height: 1;
+  }
+  .edge-thick-marker-sm {
+    color: #2e78d6;
+    font-weight: bold;
+    font-size: 1rem;
+  }
+  .edge-thin-marker-sm {
+    color: var(--on-surface-variant);
+    font-size: 1rem;
+    opacity: 0.6;
+  }
 
   /* Tarjeta de misión */
   .mission-status-badge {
