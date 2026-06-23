@@ -34,7 +34,7 @@
 
   // --- Velocímetro velocidad total (ECharts) ---
   const GAUGE_VTOTAL_MIN     =  0;    // Valor mínimo del velocímetro de velocidad total (cm/s)
-  const GAUGE_VTOTAL_MAX     =  70;   // Valor máximo del velocímetro de velocidad total (cm/s)
+  const GAUGE_VTOTAL_MAX     =  50;   // Valor máximo del velocímetro de velocidad total (cm/s)
 
   // --- Gráfico scatter de coordenadas (Chart.js) ---
   const SCATTER_X_MIN        = -10;   // Eje X mínimo del scatter (cm)
@@ -47,7 +47,7 @@
   const LINE_SPEED_Y_MIN     = -120;  // Eje Y mínimo en gráficos de velocidad (cm/s)
   const LINE_SPEED_Y_MAX     =  120;  // Eje Y máximo en gráficos de velocidad (cm/s)
   const LINE_VTOTAL_Y_MIN    =  0;    // Eje Y mínimo en gráfico de velocidad total (cm/s)
-  const LINE_VTOTAL_Y_MAX    =  70;   // Eje Y máximo en gráfico de velocidad total (cm/s)
+  const LINE_VTOTAL_Y_MAX    =  50;   // Eje Y máximo en gráfico de velocidad total (cm/s)
   const LINE_MAX_POINTS      = 60;    // Número máximo de puntos en línea de tiempo
   const LINE_TIME_INTERVAL_MS = 500;  // Intervalo de muestreo en ms para los gráficos de línea
 

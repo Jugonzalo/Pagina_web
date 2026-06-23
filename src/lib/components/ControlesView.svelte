@@ -29,6 +29,10 @@
   export let v_total_ref = 0;
   /** @type {number} */
   export let teta_ref = 0;
+  /** @type {number} */
+  export let x_ref = 0;
+  /** @type {number} */
+  export let y_ref = 0;
 
   // ── Brújula interactiva ─────────────────────────────────
   /** @type {SVGSVGElement | null} */
@@ -314,8 +318,8 @@
           <div
             class="vel-bar-fill {v_total_ref >= 0 ? 'fill-pos' : 'fill-neg'}"
             style="
-              width:  {Math.abs(v_total_ref) / 70 * 50}%;
-              left:   {v_total_ref >= 0 ? '50%' : (50 - Math.abs(v_total_ref) / 70 * 50) + '%'};
+              width:  {Math.abs(v_total_ref) / 50 * 50}%;
+              left:   {v_total_ref >= 0 ? '50%' : (50 - Math.abs(v_total_ref) / 50 * 50) + '%'};
             "
           ></div>
           <div class="vel-bar-center"></div>
@@ -325,15 +329,15 @@
       <input
         id="slider-v-total-ref"
         type="range"
-        min="-70"
-        max="70"
+        min="-50"
+        max="50"
         step="1"
         bind:value={v_total_ref}
         on:input={sendVTetaControl}
         class="control-slider vteta-slider"
       />
       <div class="speed-ticks">
-        <span>-70 cm/s</span><span>0</span><span>+70 cm/s</span>
+        <span>-50 cm/s</span><span>0</span><span>+50 cm/s</span>
       </div>
     </div>
 
@@ -453,6 +457,47 @@
       </div>
       <div class="compass-hint">Clic/arrastra la brújula · slider · o stick izquierdo del mando</div>
     </div>
+  </div>
+  {/if}
+
+  <!-- Controles de Coordenadas (Modo 4) -->
+  {#if controlMode === 'Pos'}
+  <div class="control-panel">
+    <div class="control-panel-title">CONTROL POR COORDENADAS</div>
+
+    <div class="coords-grid">
+      <div class="slider-group">
+        <label for="input-x-ref" class="slider-label">Coordenada X (x_ref)</label>
+        <div class="input-with-unit">
+          <input
+            id="input-x-ref"
+            type="number"
+            bind:value={x_ref}
+            class="form-input coord-input"
+            placeholder="0"
+          />
+          <span class="unit-label">cm</span>
+        </div>
+      </div>
+
+      <div class="slider-group">
+        <label for="input-y-ref" class="slider-label">Coordenada Y (y_ref)</label>
+        <div class="input-with-unit">
+          <input
+            id="input-y-ref"
+            type="number"
+            bind:value={y_ref}
+            class="form-input coord-input"
+            placeholder="0"
+          />
+          <span class="unit-label">cm</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-primary btn-send-coords" on:click={sendControl}>
+      🚀 ENVIAR COORDENADAS
+    </button>
   </div>
   {/if}
 
@@ -679,4 +724,61 @@
     font-family: inherit;
   }
   .btn-danger:hover { background: #6e0008; }
+
+  /* Coordenadas */
+  .coords-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+  }
+  .input-with-unit {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .form-input {
+    background: var(--surface-high);
+    border: 1px solid rgba(66, 70, 85, 0.5);
+    border-radius: var(--radius-sm);
+    color: var(--on-surface);
+    font-size: 0.85rem;
+    padding: 0.5rem 0.75rem;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .form-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(176, 198, 255, 0.1);
+  }
+  .coord-input {
+    flex: 1;
+    min-width: 0;
+  }
+  .unit-label {
+    font-size: 0.8rem;
+    color: var(--on-surface-variant);
+    font-family: var(--font-mono);
+  }
+  .btn-primary {
+    padding: 0.7rem 1.5rem;
+    background: var(--primary-container);
+    color: var(--on-surface);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: opacity 0.2s, box-shadow 0.2s;
+    font-family: inherit;
+  }
+  .btn-primary:hover { opacity: 0.85; box-shadow: 0 0 12px rgba(176, 198, 255, 0.15); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-send-coords {
+    width: 100%;
+    margin-top: 1rem;
+    text-transform: uppercase;
+  }
 </style>

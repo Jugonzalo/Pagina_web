@@ -145,6 +145,8 @@
   let controlMode   = 'traccion';
   let v_total_ref   = 0;
   let teta_ref      = 0;
+  let x_ref         = 0;
+  let y_ref         = 0;
 
   // ============================================================
   // ESTADO DE CONEXIÓN
@@ -279,6 +281,9 @@
     } else if (controlMode === 'VTeta') {
       writeValue({ firebase: FB.comandos.v_total_ref, mqtt: mqttTopics.comandos.v_total_ref }, v_total_ref);
       writeValue({ firebase: FB.comandos.teta_ref,    mqtt: mqttTopics.comandos.teta_ref    }, Math.floor(teta_ref));
+    } else if (controlMode === 'Pos') {
+      writeValue({ firebase: FB.comandos.x_ref, mqtt: mqttTopics.comandos.x_ref }, x_ref);
+      writeValue({ firebase: FB.comandos.y_ref, mqtt: mqttTopics.comandos.y_ref }, y_ref);
     }
   }
 
@@ -302,6 +307,8 @@
     comando_w     = 0;
     v_total_ref   = 0;
     teta_ref      = 0;
+    x_ref         = 0;
+    y_ref         = 0;
     telemetry.status = 'DETENIDO';
     sendControl();
   }
@@ -363,13 +370,13 @@
   /**
    * Mapea el valor del gatillo (0–1) a velocidad total (cm/s) con 3 valores discretos:
    *   0           → 0          (sin presión)
-   *   0  < t ≤ 0.5 → MAX_VEL/3   (~23 cm/s)
-   *   0.5 < t ≤ 0.9 → MAX_VEL*2/3 (~47 cm/s)
-   *   0.9 < t ≤ 1   → MAX_VEL     (70 cm/s)
+   *   0  < t ≤ 0.5 → MAX_VEL/3   (~17 cm/s)
+   *   0.5 < t ≤ 0.9 → MAX_VEL*2/3 (~33 cm/s)
+   *   0.9 < t ≤ 1   → MAX_VEL     (50 cm/s)
    * @param {number} trigger
    */
   function mapTriggerVTotal(trigger) {
-    const MAX_VEL = 70;
+    const MAX_VEL = 50;
     if (trigger <= 0)    return 0;
     if (trigger <= 0.5)  return Math.round(MAX_VEL / 3);
     if (trigger <= 0.9)  return Math.round(MAX_VEL * 2 / 3);
@@ -524,6 +531,8 @@
         bind:comando_w
         bind:v_total_ref
         bind:teta_ref
+        bind:x_ref
+        bind:y_ref
         {gamepadConnected}
         {sendControl}
         {emergencyStop}
