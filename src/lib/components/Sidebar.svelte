@@ -79,6 +79,14 @@
       <span class="nav-icon">▦</span>
       <span class="nav-label">BODEGA</span>
     </button>
+    <button
+      id="btn-nav-consola"
+      class="nav-item {activeView === 'consola' ? 'nav-item--active' : ''}"
+      on:click={() => activeView = 'consola'}
+    >
+      <span class="nav-icon">⌨</span>
+      <span class="nav-label">CONSOLA</span>
+    </button>
   </nav>
 
   <!-- ── SELECTOR DE FUENTE DE DATOS ──────────────────── -->

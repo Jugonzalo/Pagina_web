@@ -33,6 +33,8 @@
   export let x_ref = 0;
   /** @type {number} */
   export let y_ref = 0;
+  /** @type {() => void} */
+  export let sendCoords;
 
   // ── Brújula interactiva ─────────────────────────────────
   /** @type {SVGSVGElement | null} */
@@ -40,8 +42,9 @@
   let isDraggingCompass = false;
 
   /**
-   * Calcula el ángulo (0-360, sentido horario desde Norte)
+   * Calcula el ángulo (0-360, sentido antihorario desde Este)
    * a partir de un evento de puntero sobre el SVG de la brújula.
+   * 0° = Este (derecha), 90° = Norte (arriba), 180° = Oeste, 270° = Sur
    * @param {PointerEvent} e
    */
   function angleFromPointer(e) {
@@ -51,8 +54,8 @@
     const cy = rect.top  + rect.height / 2;
     const dx = e.clientX - cx;
     const dy = e.clientY - cy;
-    // atan2 da ángulo desde el eje X; lo rotamos para que 0° sea Norte (arriba)
-    let deg = Math.atan2(dx, -dy) * (180 / Math.PI);
+    // atan2(-dy, dx) → ángulo matemático estándar antihorario desde Este
+    let deg = Math.atan2(-dy, dx) * (180 / Math.PI);
     if (deg < 0) deg += 360;
     return Math.round(deg);
   }
@@ -75,18 +78,19 @@
     compassEl?.releasePointerCapture(e.pointerId);
   }
 
-  // Convierte grados a coordenadas X,Y del extremo de la aguja (r = radio)
+  // Convierte grados (0°=Este, 90°=Norte, antihorario) a coordenadas X,Y del extremo de la aguja
   function needleXY(deg, r) {
-    const rad = (deg - 90) * (Math.PI / 180);
+    // rad negativo porque en SVG el eje Y crece hacia abajo (invertido)
+    const rad = -deg * (Math.PI / 180);
     return { x: 100 + Math.cos(rad) * r, y: 100 + Math.sin(rad) * r };
   }
 
-  // Marcas de los cardinales
+  // Marcas de los cardinales: 0°=Este, 90°=Norte, 180°=Oeste, 270°=Sur
   const cardinals = [
-    { label: 'N', deg: 0   },
-    { label: 'E', deg: 90  },
-    { label: 'S', deg: 180 },
-    { label: 'O', deg: 270 },
+    { label: 'E', deg: 0   },
+    { label: 'N', deg: 90  },
+    { label: 'O', deg: 180 },
+    { label: 'S', deg: 270 },
   ];
 
   function sendVTetaControl() {
@@ -100,9 +104,9 @@
   $: arrowA     = needleXY(teta_ref - 10, 63);
   $: arrowB     = needleXY(teta_ref + 10, 63);
 
-  // Sector iluminado (arco desde Norte hasta teta_ref)
-  $: sectorStartRad = -Math.PI / 2;
-  $: sectorEndRad   = (teta_ref - 90) * Math.PI / 180;
+  // Sector iluminado (arco desde Este hasta teta_ref, sentido antihorario)
+  $: sectorStartRad = 0;                          // Este (derecha)
+  $: sectorEndRad   = -teta_ref * Math.PI / 180;  // antihorario en coords SVG
   $: sectorR        = 72;
   $: sectorX1       = 100 + Math.cos(sectorStartRad) * sectorR;
   $: sectorY1       = 100 + Math.sin(sectorStartRad) * sectorR;
@@ -372,7 +376,7 @@
 
           <!-- Marcas cada 30° (mayores) -->
           {#each Array.from({length: 12}, (_, i) => i * 30) as deg}
-            {@const rad = (deg - 90) * Math.PI / 180}
+            {@const rad = -deg * Math.PI / 180}
             {@const x1 = 100 + Math.cos(rad) * 80}
             {@const y1 = 100 + Math.sin(rad) * 80}
             {@const x2 = 100 + Math.cos(rad) * 88}
@@ -383,7 +387,7 @@
           <!-- Marcas cada 10° (menores) -->
           {#each Array.from({length: 36}, (_, i) => i * 10) as deg}
             {#if deg % 30 !== 0}
-              {@const rad = (deg - 90) * Math.PI / 180}
+              {@const rad = -deg * Math.PI / 180}
               {@const x1 = 100 + Math.cos(rad) * 84}
               {@const y1 = 100 + Math.sin(rad) * 84}
               {@const x2 = 100 + Math.cos(rad) * 88}
@@ -395,7 +399,7 @@
           <!-- Sector iluminado -->
           {#if teta_ref > 0 && teta_ref < 360}
             <path
-              d="M 100 100 L {sectorX1} {sectorY1} A {sectorR} {sectorR} 0 {sectorLargeArc} 1 {sectorX2} {sectorY2} Z"
+              d="M 100 100 L {sectorX1} {sectorY1} A {sectorR} {sectorR} 0 {sectorLargeArc} 0 {sectorX2} {sectorY2} Z"
               fill="rgba(176,198,255,0.07)"
               stroke="none"
             />
@@ -425,7 +429,7 @@
 
           <!-- Etiquetas cardinales -->
           {#each cardinals as c}
-            {@const rad = (c.deg - 90) * Math.PI / 180}
+            {@const rad = -c.deg * Math.PI / 180}
             {@const lx  = 100 + Math.cos(rad) * 71}
             {@const ly  = 100 + Math.sin(rad) * 71}
             <text
@@ -435,7 +439,7 @@
               font-size="13"
               font-weight="700"
               font-family="Inter, system-ui, sans-serif"
-              fill={c.label === 'N' ? '#f7be00' : '#8a8ea8'}
+              fill={c.label === 'E' ? '#f7be00' : '#8a8ea8'}
             >{c.label}</text>
           {/each}
         </svg>
@@ -455,7 +459,7 @@
       <div class="speed-ticks">
         <span>0°</span><span>90°</span><span>180°</span><span>270°</span><span>360°</span>
       </div>
-      <div class="compass-hint">Clic/arrastra la brújula · slider · o stick izquierdo del mando</div>
+      <div class="compass-hint">Clic/arrastra la brújula · slider · stick izq. del mando · LB +10° / B −10°</div>
     </div>
   </div>
   {/if}
@@ -495,8 +499,8 @@
       </div>
     </div>
 
-    <button class="btn-primary btn-send-coords" on:click={sendControl}>
-      🚀 ENVIAR COORDENADAS
+    <button class="btn-primary btn-send-coords" on:click={sendCoords}>
+      ENVIAR COORDENADAS
     </button>
   </div>
   {/if}

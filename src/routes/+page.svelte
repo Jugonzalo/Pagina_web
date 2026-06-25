@@ -3,6 +3,8 @@
   import DatosView from '$lib/components/DatosView.svelte';
   import ControlesView from '$lib/components/ControlesView.svelte';
   import BodegaView from '$lib/components/BodegaView.svelte';
+  import ConsolaView from '$lib/components/ConsolaView.svelte';
+
 
   // ── Firebase ─────────────────────────────────────────────────
   import {
@@ -287,6 +289,11 @@
     }
   }
 
+  function sendCoords() {
+    writeValue({ firebase: FB.comandos.x_ref, mqtt: mqttTopics.comandos.x_ref }, x_ref);
+    writeValue({ firebase: FB.comandos.y_ref, mqtt: mqttTopics.comandos.y_ref }, y_ref);
+  }
+
   function syncThrustToWheels() {
     comando_v_izq = thrust;
     comando_v_der = thrust;
@@ -299,16 +306,43 @@
   }
 
   function emergencyStop() {
-    thrustL       = 0;
-    thrustR       = 0;
-    thrust        = 0;
-    comando_v_izq = 0;
-    comando_v_der = 0;
-    comando_w     = 0;
-    v_total_ref   = 0;
-    teta_ref      = 0;
-    x_ref         = 0;
-    y_ref         = 0;
+    if (controlMode === 'VTeta') {
+      // Modo 3: velocidad a 0, ángulo de referencia se mantiene
+      v_total_ref   = 0;
+      // teta_ref se queda en su valor actual
+      thrustL       = 0;
+      thrustR       = 0;
+      thrust        = 0;
+      comando_v_izq = 0;
+      comando_v_der = 0;
+      comando_w     = 0;
+      x_ref         = 0;
+      y_ref         = 0;
+    } else if (controlMode === 'Pos') {
+      // Modo 4: coordenadas a -10
+      x_ref         = -10;
+      y_ref         = -10;
+      thrustL       = 0;
+      thrustR       = 0;
+      thrust        = 0;
+      comando_v_izq = 0;
+      comando_v_der = 0;
+      comando_w     = 0;
+      v_total_ref   = 0;
+      teta_ref      = 0;
+    } else {
+      // Modos 1 y 2: comportamiento original, todo a 0
+      thrustL       = 0;
+      thrustR       = 0;
+      thrust        = 0;
+      comando_v_izq = 0;
+      comando_v_der = 0;
+      comando_w     = 0;
+      v_total_ref   = 0;
+      teta_ref      = 0;
+      x_ref         = 0;
+      y_ref         = 0;
+    }
     telemetry.status = 'DETENIDO';
     sendControl();
   }
@@ -354,13 +388,13 @@
   /**
    * Mapea el valor del gatillo (0–1) a velocidad (cm/s) con 3 valores discretos:
    *   0           → 0          (sin presión)
-   *   0  < t ≤ 0.5 → MAX_VEL/3   (~33 cm/s)
-   *   0.5 < t ≤ 0.9 → MAX_VEL*2/3 (~67 cm/s)
-   *   0.9 < t ≤ 1   → MAX_VEL     (100 cm/s)
+   *   0  < t ≤ 0.5 → MAX_VEL/3   (10 cm/s)
+   *   0.5 < t ≤ 0.9 → MAX_VEL*2/3 (20 cm/s)
+   *   0.9 < t ≤ 1   → MAX_VEL     (30 cm/s)
    * @param {number} trigger
    */
   function mapTriggerVel(trigger) {
-    const MAX_VEL = 100;
+    const MAX_VEL = 30;
     if (trigger <= 0)    return 0;
     if (trigger <= 0.5)  return Math.round(MAX_VEL / 3);
     if (trigger <= 0.9)  return Math.round(MAX_VEL * 2 / 3);
@@ -370,13 +404,13 @@
   /**
    * Mapea el valor del gatillo (0–1) a velocidad total (cm/s) con 3 valores discretos:
    *   0           → 0          (sin presión)
-   *   0  < t ≤ 0.5 → MAX_VEL/3   (~17 cm/s)
-   *   0.5 < t ≤ 0.9 → MAX_VEL*2/3 (~33 cm/s)
-   *   0.9 < t ≤ 1   → MAX_VEL     (50 cm/s)
+   *   0  < t ≤ 0.5 → MAX_VEL/3   (10 cm/s)
+   *   0.5 < t ≤ 0.9 → MAX_VEL*2/3 (20 cm/s)
+   *   0.9 < t ≤ 1   → MAX_VEL     (30 cm/s)
    * @param {number} trigger
    */
   function mapTriggerVTotal(trigger) {
-    const MAX_VEL = 50;
+    const MAX_VEL = 30;
     if (trigger <= 0)    return 0;
     if (trigger <= 0.5)  return Math.round(MAX_VEL / 3);
     if (trigger <= 0.9)  return Math.round(MAX_VEL * 2 / 3);
@@ -384,8 +418,8 @@
   }
 
   /**
-   * Convierte la posición del stick (x, y en [-1,1]) a ángulo horario desde
-   * Norte (0°=arriba, 90°=derecha), redondeado al múltiplo de 30° más cercano.
+   * Convierte la posición del stick (x, y en [-1,1]) a ángulo antihorario desde
+   * Este (0°=derecha, 90°=arriba), redondeado al múltiplo de 30° más cercano.
    * Devuelve null si el stick está dentro de la zona muerta.
    * @param {number} x  - axes[0]
    * @param {number} y  - axes[1]
@@ -395,12 +429,16 @@
     const DEADZONE = 0.25;          // radio mínimo para considerar input
     const magnitude = Math.sqrt(x * x + y * y);
     if (magnitude < DEADZONE) return null;
-    // atan2(x, -y) → ángulo horario desde Norte
-    let deg = Math.atan2(x, -y) * (180 / Math.PI);
+    // atan2(-y, x) → ángulo antihorario desde Este (stick arriba = -y = 90°)
+    let deg = Math.atan2(-y, x) * (180 / Math.PI);
     if (deg < 0) deg += 360;
     // Redondear al múltiplo de 30° más cercano
     return Math.round(deg / 30) * 30 % 360;
   }
+
+  // Rastreo de estado anterior de botones para detectar flanco de subida
+  let prevB  = false;
+  let prevLB = false;
 
   function gamepadLoop() {
     const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
@@ -442,7 +480,23 @@
           heading  = newAngle;
           sendControl();
         }
+        // LB → +10° / B → -10° (flanco de subida)
+        const btnB = !!(gp.buttons[1]?.pressed);
+        const lb   = !!(gp.buttons[4]?.pressed);
+        if (lb && !prevLB) {
+          teta_ref = (teta_ref + 10) % 360;
+          heading  = teta_ref;
+          sendControl();
+        }
+        if (btnB && !prevB) {
+          teta_ref = (teta_ref - 10 + 360) % 360;
+          heading  = teta_ref;
+          sendControl();
+        }
       }
+      // Siempre actualizar estado previo de botones (fuera del if de modo)
+      prevB  = !!(gp.buttons[1]?.pressed);
+      prevLB = !!(gp.buttons[4]?.pressed);
     }
     gamepadLoopId = requestAnimationFrame(gamepadLoop);
   }
@@ -535,6 +589,7 @@
         bind:y_ref
         {gamepadConnected}
         {sendControl}
+        {sendCoords}
         {emergencyStop}
         {syncThrustToWheels}
       />
@@ -547,6 +602,20 @@
         bind:newMissionPriority
         {assignMission}
         {telemetry}
+      />
+    {:else if activeView === 'consola'}
+      <ConsolaView
+        {ROBOT_ID}
+        {telemetry}
+        duty_der={Math.floor(thrustR * 2.55)}
+        duty_izq={Math.floor(thrustL * 2.55)}
+        {teta_ref}
+        v_der_ref={comando_v_der}
+        v_izq_ref={comando_v_izq}
+        {v_total_ref}
+        {x_ref}
+        {y_ref}
+        activeSource={currentSource}
       />
     {/if}
   </main>
